@@ -1,15 +1,17 @@
+
 // @ts-nocheck
 // TODO: Fix types
 "use client";
 
 import type { CSSProperties } from 'react';
 import { Chessboard } from "react-chessboard";
-import type { Piece, Square } from 'react-chessboard/dist/chessboard/types'; // Ensure correct import path
+import type { Piece, Square, BoardOrientation } from 'react-chessboard/dist/chessboard/types'; // Ensure correct import path
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChessboardClientProps {
   fen: string;
   onPieceDrop: (sourceSquare: Square, targetSquare: Square, piece: Piece) => boolean;
+  boardOrientation?: BoardOrientation; // 'white' | 'black'
   boardWidth?: number;
   arePiecesDraggable: boolean;
   customBoardStyle?: CSSProperties;
@@ -20,6 +22,7 @@ interface ChessboardClientProps {
 export default function ChessboardClient({
   fen,
   onPieceDrop,
+  boardOrientation = 'white',
   boardWidth,
   arePiecesDraggable,
   customBoardStyle = {},
@@ -34,18 +37,19 @@ export default function ChessboardClient({
       <Chessboard
         position={fen}
         onPieceDrop={onPieceDrop}
+        boardOrientation={boardOrientation}
         boardWidth={dynamicBoardWidth}
         arePiecesDraggable={arePiecesDraggable}
         customBoardStyle={{
           borderRadius: "var(--radius)",
-          overflow: 'hidden', // Ensures inner border radius is visible if pieces are near edge
+          overflow: 'hidden', 
           ...customBoardStyle,
         }}
         customDarkSquareStyle={customDarkSquareStyle}
         customLightSquareStyle={customLightSquareStyle}
-        customPieces={{}} // Can be used for custom piece sets if desired
+        customPieces={{}} 
         animationDuration={200}
-        dropOffBoard="snapback" // Pieces snap back if dropped off board
+        dropOffBoard="snapback" 
       />
     </div>
   );

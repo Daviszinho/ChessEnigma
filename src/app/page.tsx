@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 // TODO: Fix types
 "use client";
@@ -18,6 +19,7 @@ import { CheckCircle, XCircle, RefreshCcw, Brain, Loader2 } from 'lucide-react';
 export default function Home() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [currentFen, setCurrentFen] = useState<string>("start");
+  const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white');
   const [chessInstance, setChessInstance] = useState<Chess | null>(null);
   const [solutionMoves, setSolutionMoves] = useState<string[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState<number>(0);
@@ -32,10 +34,11 @@ export default function Home() {
     const chess = new Chess(newPuzzle.fen);
     setPuzzle(newPuzzle);
     setCurrentFen(chess.fen());
+    setBoardOrientation(newPuzzle.orientation);
     setChessInstance(chess);
     setSolutionMoves(newPuzzle.solution.split(' '));
     setCurrentMoveIndex(0);
-    setIsUserTurn(false); // App makes the first move
+    setIsUserTurn(chess.turn() === newPuzzle.orientation.charAt(0)); // User turn if it's their color to move based on orientation
     setIsPuzzleSolved(false);
     setMoveHistory([]);
     setIsLoading(false);
@@ -49,11 +52,12 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to fetch puzzle:", error);
       toast({
-        title: "Error",
-        description: "Could not fetch a new puzzle. Please try again.",
+        title: "Error Fetching Puzzle",
+        description: "Could not fetch a new puzzle. Please try again later.",
         variant: "destructive",
       });
-      setIsLoading(false);
+      // Keep previous puzzle or set to a default state if desired
+      setIsLoading(false); 
     }
   }, [initializeNewPuzzle, toast]);
 
@@ -62,12 +66,19 @@ export default function Home() {
   }, [fetchNewPuzzle]);
 
   const makeAppMove = useCallback(() => {
-    if (!chessInstance || !solutionMoves.length || currentMoveIndex >= solutionMoves.length || isUserTurn || isPuzzleSolved) {
+    if (!chessInstance || !solutionMoves.length || currentMoveIndex >= solutionMoves.length || isUserTurn || isPuzzleSolved || !puzzle) {
       return;
     }
 
+    // App moves if it's NOT the user's oriented color's turn
+    if (chessInstance.turn() === puzzle.orientation.charAt(0)) {
+        setIsUserTurn(true);
+        return;
+    }
+    
     const moveNotation = solutionMoves[currentMoveIndex];
-    const moveResult = chessInstance.move(moveNotation);
+    const moveResult = chessInstance.move(moveNotation, { sloppy: true });
+
 
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
@@ -83,55 +94,64 @@ export default function Home() {
           action: <CheckCircle className="text-green-500" />,
         });
       } else {
-        setIsUserTurn(true);
+        setIsUserTurn(true); // Now it's user's turn
       }
     } else {
-      // This case should ideally not happen if solutions are valid
-      console.error("Invalid app move in solution:", moveNotation);
+      console.error("Invalid app move in solution:", moveNotation, "FEN:", chessInstance.fen());
       toast({ title: "Puzzle Error", description: "The puzzle has an invalid move for the app.", variant: "destructive" });
     }
-  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast]);
+  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle]);
 
   useEffect(() => {
-    if (!isUserTurn && !isPuzzleSolved && puzzle && !isLoading) {
-      // Add a slight delay for app moves to feel more natural
-      const timer = setTimeout(() => {
-        makeAppMove();
-      }, 500);
-      return () => clearTimeout(timer);
+    // This logic determines when the app should make a move.
+    // It should move if:
+    // - It's not the user's turn AND
+    // - The puzzle is not solved AND
+    // - A puzzle is loaded AND
+    // - It's not currently loading AND
+    // - It's the app's turn according to chessInstance.turn() and puzzle.orientation
+    if (puzzle && !isLoading && !isPuzzleSolved && !isUserTurn) {
+       if (chessInstance && chessInstance.turn() !== puzzle.orientation.charAt(0)) {
+        const timer = setTimeout(() => {
+          makeAppMove();
+        }, 500);
+        return () => clearTimeout(timer);
+      } else if (chessInstance && chessInstance.turn() === puzzle.orientation.charAt(0)) {
+        // If it's user's color to move as per FEN, set user turn
+        setIsUserTurn(true);
+      }
     }
-  }, [isUserTurn, isPuzzleSolved, puzzle, isLoading, makeAppMove]);
+  }, [puzzle, isLoading, isPuzzleSolved, isUserTurn, chessInstance, makeAppMove]);
 
 
   const handleUserMove = (sourceSquare: Square, targetSquare: Square, piece: Piece): boolean => {
-    if (!chessInstance || !isUserTurn || isPuzzleSolved || currentMoveIndex >= solutionMoves.length) {
+    if (!chessInstance || !isUserTurn || isPuzzleSolved || currentMoveIndex >= solutionMoves.length || !puzzle) {
       return false;
     }
 
+    // Ensure user is moving their own color piece
+    const playerColor = puzzle.orientation.charAt(0); // 'w' or 'b'
+    if (piece.charAt(0).toLowerCase() !== playerColor) {
+        toast({ title: "Not Your Piece", description: `It's ${puzzle.orientation}'s turn. You can only move ${puzzle.orientation} pieces.`, variant: "destructive"});
+        return false; // Not the player's piece to move
+    }
+
+
     const attemptedMoveUci = `${sourceSquare}${targetSquare}`;
-    // Check for promotion, assume queen for simplicity if it's a pawn reaching the 8th/1st rank
     let promotionChar = '';
     if ((piece === 'wP' && targetSquare.endsWith('8')) || (piece === 'bP' && targetSquare.endsWith('1'))) {
-      promotionChar = 'q';
+      promotionChar = 'q'; // Default to queen promotion for simplicity
     }
+    
     const expectedMoveUciWithOptionalPromotion = solutionMoves[currentMoveIndex];
-    // Simple check: if expected move has promotion, user's move must also imply promotion.
-    // Solution format: "e7e8q". Our move: "e7e8" + promotionChar 'q'.
-    const isPromotionMove = promotionChar !== '';
-    const userMoveForComparison = attemptedMoveUci + (isPromotionMove ? promotionChar : '');
-
-
-    // Try making the move in chess.js to get SAN and validate legality
+    
     const moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
 
-    if (!moveResult) { // Illegal move by chess.js rules
+    if (!moveResult) { 
       toast({ title: "Illegal Move", description: "That move is not allowed.", variant: "destructive", action: <XCircle className="text-red-500" /> });
-      return false; // chess.js rejected, react-chessboard will snap back
+      return false; 
     }
 
-    // Compare user's move (e.g. "e2e4") with solution's move (e.g. "e2e4" or "g1f3" or "e7e8q")
-    // chess.js `moveResult.lan` (Long Algebraic Notation) is like "e2-e4". Solution is UCI.
-    // The move from chess.js is `moveResult.from` + `moveResult.to` + (optional `moveResult.promotion`)
     const madeMoveUci = moveResult.from + moveResult.to + (moveResult.promotion || '');
 
     if (madeMoveUci.toLowerCase() === expectedMoveUciWithOptionalPromotion.toLowerCase()) {
@@ -150,21 +170,45 @@ export default function Home() {
           action: <CheckCircle className="text-green-500" />,
         });
       } else {
-        setIsUserTurn(false); // Triggers app's move via useEffect
+        setIsUserTurn(false); // App's turn now
       }
-      return true; // Move was correct and made
+      return true; 
     } else {
-      toast({ title: "Incorrect Move", description: `Expected ${expectedMoveUciWithOptionalPromotion}, but you played ${madeMoveUci}. Try again.`, variant: "destructive", action: <XCircle className="text-red-500" /> });
-      chessInstance.undo(); // Undo the move in the logic
-      // No need to setCurrentFen as the board's position prop will not change, and react-chessboard should snap back.
-      return false; // Move was legal but not the correct solution move
+      toast({ title: "Incorrect Move", description: `Expected the solution move, but you played ${moveResult.san}. Try again.`, variant: "destructive", action: <XCircle className="text-red-500" /> });
+      chessInstance.undo(); 
+      //setCurrentFen(chessInstance.fen()); // Not needed, react-chessboard snaps back for invalid logical move
+      return false; 
     }
   };
 
   const handleResetPuzzle = () => {
     if (puzzle) {
-      initializeNewPuzzle(puzzle);
-       toast({ title: "Puzzle Reset", description: "The current puzzle has been reset." });
+      // Re-initialize with the same puzzle data
+      const chess = new Chess(puzzle.fen);
+      setCurrentFen(chess.fen());
+      setBoardOrientation(puzzle.orientation);
+      setChessInstance(chess);
+      setSolutionMoves(puzzle.solution.split(' '));
+      setCurrentMoveIndex(0);
+      // Determine whose turn it is based on the FEN and puzzle orientation for the first move.
+      // If the FEN's turn to move matches the puzzle's orientation, it's the app's first move (if solution dictates)
+      // or user's first move (if solution dictates).
+      // The makeAppMove useEffect will handle making the first app move if necessary.
+      const isAppFirstMover = chess.turn() !== puzzle.orientation.charAt(0) && solutionMoves.length > 0 && !solutionMoves[currentMoveIndex]?.startsWith(puzzle.orientation.charAt(0));
+      setIsUserTurn(!isAppFirstMover);
+      
+      setIsPuzzleSolved(false);
+      setMoveHistory([]);
+      setIsLoading(false); // Not loading, just resetting
+      toast({ title: "Puzzle Reset", description: "The current puzzle has been reset." });
+      
+      // Trigger app move if it's app's turn after reset
+      if (!isUserTurn && chess.turn() !== puzzle.orientation.charAt(0)) {
+         setTimeout(() => makeAppMove(), 0); // Allow state to settle
+      } else if (chess.turn() === puzzle.orientation.charAt(0)) {
+        setIsUserTurn(true);
+      }
+
     }
   };
   
@@ -197,6 +241,7 @@ export default function Home() {
               <ChessboardClient
                 fen={currentFen}
                 onPieceDrop={handleUserMove}
+                boardOrientation={boardOrientation}
                 arePiecesDraggable={isUserTurn && !isPuzzleSolved && !isLoading}
                 customDarkSquareStyle={{ backgroundColor: 'hsl(var(--primary) / 0.8)'}}
                 customLightSquareStyle={{ backgroundColor: 'hsl(var(--background))'}}
@@ -224,7 +269,7 @@ export default function Home() {
                 ) : isLoading ? (
                   <p className="font-semibold text-primary">Loading puzzle...</p>
                 ) : isUserTurn ? (
-                  <p className="font-semibold text-accent-foreground animate-pulse">Your turn to move.</p>
+                  <p className="font-semibold text-accent-foreground animate-pulse">Your turn ({puzzle?.orientation}) to move.</p>
                 ) : (
                   <p className="font-semibold text-primary">App is thinking...</p>
                 )}
