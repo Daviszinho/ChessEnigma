@@ -50,14 +50,18 @@ export default function Home() {
       const newPuzzleData = await getPuzzleAction();
       initializeNewPuzzle(newPuzzleData);
     } catch (error) {
-      console.error("Failed to fetch puzzle:", error);
+      console.error("Failed to fetch puzzle:", error); // Logs the detailed error to the console
+      let toastDescription = "An unexpected error occurred while fetching a new puzzle. Please try again later.";
+      if (error instanceof Error && error.message) {
+        toastDescription = error.message; // Use the specific error message from the backend
+      }
       toast({
         title: "Error Fetching Puzzle",
-        description: "Could not fetch a new puzzle. Please try again later.",
+        description: toastDescription,
         variant: "destructive",
       });
       // Keep previous puzzle or set to a default state if desired
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   }, [initializeNewPuzzle, toast]);
 
