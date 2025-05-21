@@ -54,10 +54,16 @@ const fetchChessPuzzleFromBigQueryTool = ai.defineTool(
       }
     } catch (error) {
       console.error('Error fetching puzzle from BigQuery:', error);
-      // For a real app, you might want more sophisticated error handling or fallback mechanisms.
-      // For now, we'll re-throw to let the caller handle it.
+      let detailedMessage = 'An unknown error occurred';
       if (error instanceof Error) {
-        throw new Error(`Failed to fetch puzzle from BigQuery: ${error.message}`);
+        detailedMessage = error.message;
+      }
+
+      // Provide a more specific message if it seems like an auth/permission issue.
+      if (typeof detailedMessage === 'string' && (detailedMessage.toLowerCase().includes('access token') || detailedMessage.includes('status code 500') || detailedMessage.toLowerCase().includes('credential') || detailedMessage.toLowerCase().includes('permission denied'))) {
+        throw new Error(`Failed to fetch puzzle from BigQuery due to an authentication or permission issue: ${detailedMessage}. Please check your Google Cloud project credentials (e.g., Application Default Credentials, GOOGLE_APPLICATION_CREDENTIALS environment variable) and ensure the necessary BigQuery IAM permissions are granted.`);
+      } else if (error instanceof Error) {
+        throw new Error(`Failed to fetch puzzle from BigQuery: ${detailedMessage}`);
       }
       throw new Error('An unknown error occurred while fetching puzzle from BigQuery.');
     }
@@ -82,3 +88,4 @@ const getChessPuzzleFlow = ai.defineFlow(
 export async function getChessPuzzle(): Promise<ChessPuzzleOutput> {
   return getChessPuzzleFlow({});
 }
+
