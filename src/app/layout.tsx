@@ -1,7 +1,7 @@
 import type {Metadata} from 'next';
 import {Geist, Geist_Mono} from 'next/font/google';
 import './globals.css';
-import 'react-chessboard/dist/chessboard.css'; // Import react-chessboard CSS
+// import 'react-chessboard/dist/index.css'; // Import react-chessboard CSS - Removed due to Module Not Found error
 import { Toaster } from "@/components/ui/toaster"; // Import Toaster
 
 const geistSans = Geist({
