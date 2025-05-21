@@ -23,7 +23,7 @@ export default function Home() {
   const [chessInstance, setChessInstance] = useState<Chess | null>(null);
   const [solutionMoves, setSolutionMoves] = useState<string[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState<number>(0);
-  const [isUserTurn, setIsUserTurn] = useState<boolean>(false); // Will be set to false initially by initializeNewPuzzle
+  const [isUserTurn, setIsUserTurn] = useState<boolean>(false);
   const [isPuzzleSolved, setIsPuzzleSolved] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
@@ -38,10 +38,19 @@ export default function Home() {
     setChessInstance(chess);
     setSolutionMoves(newPuzzle.solution.split(' '));
     setCurrentMoveIndex(0);
-    setIsUserTurn(false); // App always makes the first move or initiates the sequence
     setIsPuzzleSolved(false);
     setMoveHistory([]);
     setIsLoading(false);
+
+    const initialGameTurn = chess.turn(); // 'w' or 'b'
+    const userPlaysAs = newPuzzle.orientation.charAt(0); // 'w' or 'b'
+
+    // Determine if the user should make the first move of the solution
+    if (initialGameTurn === userPlaysAs) {
+      setIsUserTurn(true); // User makes solutionMoves[0]
+    } else {
+      setIsUserTurn(false); // App makes solutionMoves[0]
+    }
   }, []);
 
   const fetchNewPuzzle = useCallback(async () => {
@@ -100,7 +109,7 @@ export default function Home() {
   }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle]);
 
   useEffect(() => {
-    // App makes a move if it's not the user's turn, puzzle is active, and there are moves left for the app.
+    // App makes a move if it's not the user's turn, puzzle is active, and there are moves left.
     if (puzzle && chessInstance && !isLoading && !isPuzzleSolved && !isUserTurn && currentMoveIndex < solutionMoves.length) {
         const timer = setTimeout(() => {
           makeAppMove();
@@ -115,11 +124,20 @@ export default function Home() {
       return false;
     }
 
-    const playerColor = puzzle.orientation.charAt(0); 
-    if (piece.charAt(0).toLowerCase() !== playerColor) {
-        toast({ title: "Not Your Piece", description: `It's ${puzzle.orientation}'s turn. You can only move ${puzzle.orientation} pieces.`, variant: "destructive"});
-        return false; 
+    // Check if the user is moving their designated piece color
+    const userPlaysAsColor = puzzle.orientation.charAt(0);
+    if (piece.charAt(0).toLowerCase() !== userPlaysAsColor) {
+        toast({ title: "Not Your Piece", description: `You are playing as ${puzzle.orientation}. You can only move ${puzzle.orientation} pieces.`, variant: "destructive"});
+        return false;
     }
+    
+    // Also check if it's actually that color's turn in the game engine
+    if (chessInstance.turn() !== userPlaysAsColor) {
+        toast({ title: "Not Your Turn", description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn according to the board.`, variant: "destructive"});
+        // This situation ideally shouldn't be reached if isUserTurn is managed correctly
+        return false;
+    }
+
 
     const attemptedMoveUci = `${sourceSquare}${targetSquare}`;
     let promotionChar = '';
@@ -160,6 +178,7 @@ export default function Home() {
     } else {
       toast({ title: "Incorrect Move", description: `Expected the solution move, but you played ${moveResult.san}. Try again.`, variant: "destructive", action: <XCircle className="text-red-500" /> });
       chessInstance.undo(); 
+      setCurrentFen(chessInstance.fen()); // Reflect the undone move on the board
       return false; 
     }
   };
@@ -170,15 +189,20 @@ export default function Home() {
       setCurrentFen(chess.fen());
       setBoardOrientation(puzzle.orientation);
       setChessInstance(chess);
-      // solutionMoves is already set from the current puzzle, no need to split again unless puzzle object itself might be stale.
-      // setSolutionMoves(puzzle.solution.split(' ')); 
+      // solutionMoves is already set from the current puzzle
       setCurrentMoveIndex(0);
-      setIsUserTurn(false); // App will make the first move after reset
       setIsPuzzleSolved(false);
       setMoveHistory([]);
       setIsLoading(false); 
       toast({ title: "Puzzle Reset", description: "The current puzzle has been reset." });
-      // The useEffect for makeAppMove will trigger because isUserTurn is false and other conditions are met.
+
+      const initialGameTurn = chess.turn();
+      const userPlaysAs = puzzle.orientation.charAt(0);
+      if (initialGameTurn === userPlaysAs) {
+        setIsUserTurn(true);
+      } else {
+        setIsUserTurn(false); // App will make the first move via useEffect
+      }
     }
   };
   
@@ -238,10 +262,12 @@ export default function Home() {
                   <p className="font-semibold text-green-600">Puzzle Solved! Well done!</p>
                 ) : isLoading ? (
                   <p className="font-semibold text-primary">Loading puzzle...</p>
-                ) : isUserTurn ? (
-                  <p className="font-semibold text-accent-foreground animate-pulse">Your turn ({puzzle?.orientation}) to move.</p>
-                ) : (
-                  <p className="font-semibold text-primary">App is thinking...</p>
+                ) : puzzle && isUserTurn ? (
+                  <p className="font-semibold text-accent-foreground animate-pulse">Your turn ({puzzle.orientation}) to move.</p>
+                ) : puzzle ? (
+                  <p className="font-semibold text-primary">App is thinking... ({chessInstance?.turn() === 'w' ? "White" : "Black"} to move)</p>
+                ): (
+                   <p className="font-semibold text-primary">App is thinking...</p>
                 )}
               </div>
             </CardContent>
@@ -275,3 +301,4 @@ export default function Home() {
     </div>
   );
 }
+
