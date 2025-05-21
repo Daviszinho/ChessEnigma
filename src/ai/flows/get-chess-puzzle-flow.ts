@@ -78,19 +78,10 @@ const getChessPuzzleFlow = ai.defineFlow(
   },
   async () => {
     // A tool function defined with ai.defineTool, when called directly,
-    // returns its output directly (matching its outputSchema),
-    // not an object like { output: ... }.
-    const puzzleData = await fetchChessPuzzleFromBigQueryTool({});
-
+    // returns its output directly (matching its outputSchema).
     // The fetchChessPuzzleFromBigQueryTool is designed to throw an error
-    // if BigQuery doesn't return data or if parsing fails.
-    // So, if we reach this point, puzzleData should be a valid ChessPuzzleOutput object.
-    // An explicit check can be a safeguard.
-    if (!puzzleData) {
-        // This case should ideally not be reached if the tool works as implemented
-        // (i.e., throws an error instead of returning null/undefined).
-        throw new Error('The BigQuery tool did not return the expected puzzle data.');
-    }
+    // if BigQuery doesn't return data or if parsing fails, so no explicit null check is needed here.
+    const puzzleData = await fetchChessPuzzleFromBigQueryTool({});
     return puzzleData;
   }
 );
@@ -98,4 +89,3 @@ const getChessPuzzleFlow = ai.defineFlow(
 export async function getChessPuzzle(): Promise<ChessPuzzleOutput> {
   return getChessPuzzleFlow({});
 }
-
