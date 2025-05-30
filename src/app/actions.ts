@@ -19,11 +19,12 @@ export async function getPuzzleAction(): Promise<Puzzle> {
     const puzzleData = await getChessPuzzle(); // Call the Genkit flow
     console.log("Puzzle data from Genkit flow:", puzzleData);
 
+    // The getChessPuzzle flow itself should throw if data is invalid or missing.
+    // This explicit check here is a safeguard but might be redundant if the flow is robust.
     if (!puzzleData || !puzzleData.fen || !puzzleData.solution || !puzzleData.orientation) {
-      throw new Error("Received invalid puzzle data from Genkit flow.");
+      throw new Error("Received incomplete puzzle data from Genkit flow.");
     }
     
-    // Use FEN as ID for simplicity, or generate a unique ID if needed
     return {
       id: puzzleData.fen, 
       fen: puzzleData.fen,
@@ -32,8 +33,14 @@ export async function getPuzzleAction(): Promise<Puzzle> {
     };
   } catch (error) {
     console.error("Error in getPuzzleAction calling Genkit flow:", error);
-    // Fallback to a default puzzle or rethrow, depending on desired behavior
-    // For now, rethrowing to make the error visible
-    throw error;
+    let message = "An unexpected error occurred while fetching the puzzle.";
+    if (error instanceof Error) {
+      message = error.message; // Use the message from the original error.
+    } else if (typeof error === 'string') {
+      message = error;
+    }
+    // Construct a brand new, plain Error object to ensure serializability.
+    throw new Error(message);
   }
 }
+
