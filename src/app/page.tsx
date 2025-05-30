@@ -93,7 +93,11 @@ export default function Home() {
 
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
-      setMoveHistory(prev => [...prev, `${Math.floor(currentMoveIndex / 2) + 1}. (App) ${moveResult.san}`]);
+      const moveNumber = Math.floor(currentMoveIndex / 2) + 1;
+      const playerTag = "(App)";
+      const historyText = `${moveNumber}${moveResult.color === 'b' ? '...' : '.'} ${playerTag} ${moveResult.san}`;
+      setMoveHistory(prev => [...prev, historyText]);
+      
       const newMoveIndex = currentMoveIndex + 1;
       setCurrentMoveIndex(newMoveIndex);
 
@@ -149,26 +153,25 @@ export default function Home() {
     }
 
     const expectedMoveUciWithOptionalPromotion = solutionMoves[currentMoveIndex];
-    // The expected move might or might not have a promotion character.
-    // The actual move from chess.js will include it if promotion occurred.
-
+    
     const moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
 
     if (!moveResult) {
-      // This case should ideally be caught by the checks above if it's a turn issue.
-      // If it's another type of illegal move (e.g., moving into check, piece cannot make that move), this will catch it.
       toast({ title: "Illegal Move", description: "That move is not allowed.", variant: "destructive", action: <XCircle className="text-red-500" /> });
-      setCurrentFen(chessInstance.fen()); // Ensure FEN is synced even if move is illegal (chess.js might not change it, but good practice)
+      setCurrentFen(chessInstance.fen()); 
       return false;
     }
 
-    // Compare the core move (e.g., "e7e8") ignoring promotion for the check against solution if solution doesn't specify promotion char
     const madeMoveUci = moveResult.from + moveResult.to + (moveResult.promotion || '');
 
     if (madeMoveUci.toLowerCase() === expectedMoveUciWithOptionalPromotion.toLowerCase()) {
       toast({ title: "Correct Move!", description: `You played ${moveResult.san}.`, action: <CheckCircle className="text-green-500" /> });
       setCurrentFen(chessInstance.fen());
-      setMoveHistory(prev => [...prev, `${Math.floor(currentMoveIndex / 2) + 1}. (You) ${moveResult.san}`]);
+      
+      const moveNumber = Math.floor(currentMoveIndex / 2) + 1;
+      const playerTag = "(You)";
+      const historyText = `${moveNumber}${moveResult.color === 'b' ? '...' : '.'} ${playerTag} ${moveResult.san}`;
+      setMoveHistory(prev => [...prev, historyText]);
 
       const newMoveIndex = currentMoveIndex + 1;
       setCurrentMoveIndex(newMoveIndex);
@@ -186,8 +189,8 @@ export default function Home() {
       return true;
     } else {
       toast({ title: "Incorrect Move", description: `Expected the solution move, but you played ${moveResult.san}. Try again.`, variant: "destructive", action: <XCircle className="text-red-500" /> });
-      chessInstance.undo(); // Revert the move
-      setCurrentFen(chessInstance.fen()); // Update FEN back to before the incorrect move
+      chessInstance.undo(); 
+      setCurrentFen(chessInstance.fen()); 
       return false;
     }
   };
@@ -210,7 +213,7 @@ export default function Home() {
       if (initialGameTurn === userPlaysAs) {
         setIsUserTurn(true);
       } else {
-        setIsUserTurn(false); // App will make the first move
+        setIsUserTurn(false); 
       }
     }
   };
@@ -226,7 +229,7 @@ export default function Home() {
     }
 
     const nextMoveUci = solutionMoves[currentMoveIndex];
-    if (nextMoveUci.length < 2) { // Should be at least 2 for source square like "e2"
+    if (nextMoveUci.length < 2) { 
       toast({ title: "Hint Error", description: "Invalid solution move format for hint.", variant: "destructive" });
       return;
     }
@@ -318,7 +321,7 @@ export default function Home() {
                 {moveHistory.length === 0 ? (
                   <p className="text-muted-foreground italic">No moves yet.</p>
                 ) : (
-                  <ol className="list-decimal list-inside space-y-1">
+                  <ol className="list-none list-inside space-y-1">
                     {moveHistory.map((move, index) => (
                       <li key={index} className="text-sm">{move}</li>
                     ))}
