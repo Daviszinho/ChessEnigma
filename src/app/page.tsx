@@ -31,14 +31,18 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [hintSquare, setHintSquare] = useState<Square | null>(null);
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   const { toast } = useToast();
-  const { t, currentLocale } = useTranslation(); // Add currentLocale for dynamic title if needed
+  const { t, currentLocale } = useTranslation();
 
   useEffect(() => {
-    // Update document title if appName is translated
     document.title = t('appName');
   }, [t, currentLocale]);
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   const initializeNewPuzzle = useCallback((newPuzzle: Puzzle) => {
     const chess = new Chess(newPuzzle.fen);
@@ -73,7 +77,6 @@ export default function Home() {
       console.error("Failed to fetch puzzle:", error);
       let toastDescription = t('toastErrorFetchingPuzzleDescription');
       if (error instanceof Error && error.message) {
-        // Backend errors are not translated by this mechanism, display them directly
         toastDescription = error.message;
       }
       toast({
@@ -100,9 +103,9 @@ export default function Home() {
 
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
-      const moveNumber = Math.floor(currentMoveIndex / 2) + 1;
-      const playerTag = "(App)"; // This could be translated if needed: t('playerTagApp')
-      const historyText = `${moveNumber}${moveResult.color === 'b' ? '...' : '.'} ${playerTag} ${moveResult.san}`;
+      const moveNumberDisplay = Math.floor(currentMoveIndex / 2) + 1;
+      const playerTag = "(App)";
+      const historyText = `${moveNumberDisplay}${moveResult.color === 'b' && currentMoveIndex > 0 ? '...' : '.'} ${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
       
       const newMoveIndex = currentMoveIndex + 1;
@@ -182,9 +185,9 @@ export default function Home() {
       toast({ title: t('toastCorrectMoveTitle'), description: t('toastCorrectMoveDescription', { san: moveResult.san }), action: <CheckCircle className="text-green-500" /> });
       setCurrentFen(chessInstance.fen());
       
-      const moveNumber = Math.floor(currentMoveIndex / 2) + 1;
-      const playerTag = `(${t('playerTagYou') || 'You'})`; // Add 'playerTagYou' to locales if needed
-      const historyText = `${moveNumber}${moveResult.color === 'b' ? '...' : '.'} ${playerTag} ${moveResult.san}`;
+      const moveNumberDisplay = Math.floor(currentMoveIndex / 2) + 1;
+      const playerTag = `(${t('playerTagYou') || 'You'})`;
+      const historyText = `${moveNumberDisplay}${moveResult.color === 'b' && currentMoveIndex > 0 ? '...' : '.'} ${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
 
       const newMoveIndex = currentMoveIndex + 1;
@@ -366,9 +369,14 @@ export default function Home() {
       </main>
 
       <footer className="mt-auto pt-10 pb-4 text-center text-sm text-muted-foreground">
-        <p>{t('footerCopyright', { year: new Date().getFullYear() })}</p>
+        <p>
+          {currentYear !== null
+            ? t('footerCopyright', { year: currentYear })
+            : t('footerCopyrightLoading')}
+        </p>
         <p>{t('footerPoweredBy')}</p>
       </footer>
     </div>
   );
 }
+
