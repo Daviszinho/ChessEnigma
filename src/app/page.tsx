@@ -15,8 +15,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getPuzzleAction, type Puzzle } from './actions';
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, RefreshCcw, Brain, Loader2, Lightbulb } from 'lucide-react';
-import { useTranslation } from '@/hooks/useTranslation';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 
 export default function Home() {
@@ -34,13 +32,10 @@ export default function Home() {
   const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   const { toast } = useToast();
-  const { t, currentLocale } = useTranslation();
 
   useEffect(() => {
-    if (t && currentLocale) {
-        document.title = t('appName');
-    }
-  }, [t, currentLocale]);
+    document.title = "ChessEnigma";
+  }, []);
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
@@ -77,30 +72,19 @@ export default function Home() {
       initializeNewPuzzle(newPuzzleData);
     } catch (error) {
       console.error("Original error fetching puzzle:", error);
-      setIsLoading(false); // Ensure loading state is reset
+      setIsLoading(false); 
 
-      try {
-        let toastTitle = "Error"; // Fallback title
-        let toastDescription = "An unexpected error occurred while fetching a new puzzle. Please try again later."; // Fallback description
+      let toastTitle = "Error Fetching Puzzle";
+      let toastDescription = "An unexpected error occurred while fetching a new puzzle. Please try again later.";
 
-        if (typeof t === 'function') {
-          toastTitle = t('toastErrorFetchingPuzzleTitle');
-          toastDescription = t('toastErrorFetchingPuzzleDescription');
-
-          if (error instanceof Error && error.message) {
-            const lowerCaseErrorMessage = error.message.toLowerCase();
-            // Only use error.message if it's more specific than the generic "Failed to fetch"
-            if (lowerCaseErrorMessage !== 'failed to fetch' && lowerCaseErrorMessage !== 'typeerror: failed to fetch') {
-              toastDescription = error.message; // Use the specific error from the backend
-            }
-          }
-        } else {
-          // t function might not be available, use raw error message if possible
-          if (error instanceof Error && error.message) {
-            toastDescription = error.message;
-          }
+      if (error instanceof Error && error.message) {
+        const lowerCaseErrorMessage = error.message.toLowerCase();
+        if (lowerCaseErrorMessage !== 'failed to fetch' && lowerCaseErrorMessage !== 'typeerror: failed to fetch') {
+          toastDescription = error.message; 
         }
-        
+      }
+      
+      try {
         toast({
           title: toastTitle,
           description: toastDescription,
@@ -108,11 +92,10 @@ export default function Home() {
         });
       } catch (toastError) {
         console.error("Error displaying toast notification:", toastError);
-        // Fallback alert if the toast mechanism itself fails
         alert("Failed to fetch puzzle. An additional error occurred while trying to display the error message.");
       }
     }
-  }, [initializeNewPuzzle, toast, t]);
+  }, [initializeNewPuzzle, toast]);
 
   useEffect(() => {
     fetchNewPuzzle();
@@ -130,7 +113,7 @@ export default function Home() {
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
       const moveNumberDisplay = Math.floor(currentMoveIndex / 2) + 1;
-      const playerTag = `(${t('playerTagApp') || 'App'})`; // Added fallback for t
+      const playerTag = '(App)';
       const turnIndicator = moveResult.color === 'w' ? '.' : '...';
       const historyText = `${moveNumberDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
@@ -141,8 +124,8 @@ export default function Home() {
       if (newMoveIndex >= solutionMoves.length) {
         setIsPuzzleSolved(true);
         toast({
-          title: t('toastPuzzleSolvedTitle'),
-          description: t('toastPuzzleSolvedDescription'),
+          title: "Puzzle Solved!",
+          description: "Congratulations, you've solved the puzzle!",
           action: <CheckCircle className="text-green-500" />,
         });
       } else {
@@ -150,9 +133,9 @@ export default function Home() {
       }
     } else {
       console.error("Invalid app move in solution:", moveNotation, "FEN:", chessInstance.fen());
-      toast({ title: t('toastPuzzleErrorTitle'), description: t('toastPuzzleErrorDescription'), variant: "destructive" });
+      toast({ title: "Puzzle Error", description: "The puzzle has an invalid move for the app.", variant: "destructive" });
     }
-  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle, t]);
+  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle]);
 
   useEffect(() => {
     if (puzzle && chessInstance && !isLoading && !isPuzzleSolved && !isUserTurn && currentMoveIndex < solutionMoves.length) {
@@ -172,8 +155,8 @@ export default function Home() {
     const userPlaysAsColor = puzzle.orientation.charAt(0);
     if (piece.charAt(0).toLowerCase() !== userPlaysAsColor) {
         toast({ 
-          title: t('toastNotYourPieceTitle'), 
-          description: t('toastNotYourPieceDescription', { orientation: puzzle.orientation }), 
+          title: "Not Your Piece", 
+          description: `You are playing as ${puzzle.orientation}. You can only move ${puzzle.orientation} pieces.`, 
           variant: "destructive"
         });
         return false;
@@ -181,11 +164,8 @@ export default function Home() {
 
     if (chessInstance.turn() !== userPlaysAsColor) {
         toast({ 
-          title: t('toastNotYourTurnTitle'), 
-          description: t('toastNotYourTurnDescription', { 
-            turn: chessInstance.turn() === 'w' ? t('playerTurnWhite') : t('playerTurnBlack'), 
-            orientation: puzzle.orientation 
-          }), 
+          title: "Not Your Turn", 
+          description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn. You are playing as ${puzzle.orientation}.`, 
           variant: "destructive"
         });
         return false;
@@ -201,7 +181,7 @@ export default function Home() {
     const moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
 
     if (!moveResult) { 
-      toast({ title: t('toastIllegalMoveTitle'), description: t('toastIllegalMoveDescription'), variant: "destructive", action: <XCircle className="text-red-500" /> });
+      toast({ title: "Illegal Move", description: "That move is not allowed.", variant: "destructive", action: <XCircle className="text-red-500" /> });
       setCurrentFen(chessInstance.fen()); 
       return false;
     }
@@ -209,11 +189,11 @@ export default function Home() {
     const madeMoveUci = moveResult.from + moveResult.to + (moveResult.promotion || '');
 
     if (madeMoveUci.toLowerCase() === expectedMoveUciWithOptionalPromotion.toLowerCase()) {
-      toast({ title: t('toastCorrectMoveTitle'), description: t('toastCorrectMoveDescription', { san: moveResult.san }), action: <CheckCircle className="text-green-500" /> });
+      toast({ title: "Correct Move!", description: `You played ${moveResult.san}.`, action: <CheckCircle className="text-green-500" /> });
       setCurrentFen(chessInstance.fen());
       
       const moveNumberDisplay = Math.floor(currentMoveIndex / 2) + 1;
-      const playerTag = `(${t('playerTagYou') || 'You'})`; // Added fallback for t
+      const playerTag = '(You)';
       const turnIndicator = moveResult.color === 'w' ? '.' : '...';
       const historyText = `${moveNumberDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
@@ -224,8 +204,8 @@ export default function Home() {
       if (newMoveIndex >= solutionMoves.length) {
         setIsPuzzleSolved(true);
         toast({
-          title: t('toastPuzzleSolvedTitle'),
-          description: t('toastPuzzleSolvedDescription'),
+          title: "Puzzle Solved!",
+          description: "Congratulations, you've solved the puzzle!",
           action: <CheckCircle className="text-green-500" />,
         });
       } else {
@@ -234,8 +214,8 @@ export default function Home() {
       return true;
     } else {
       toast({ 
-        title: t('toastIncorrectMoveTitle'), 
-        description: t('toastIncorrectMoveDescription', { san: moveResult.san }), 
+        title: "Incorrect Move", 
+        description: `Expected the solution move, but you played ${moveResult.san}. Try again.`, 
         variant: "destructive", 
         action: <XCircle className="text-red-500" /> 
       });
@@ -256,7 +236,7 @@ export default function Home() {
       setMoveHistory([]);
       setHintSquare(null);
       setIsLoading(false); 
-      toast({ title: t('toastPuzzleResetTitle'), description: t('toastPuzzleResetDescription') });
+      toast({ title: "Puzzle Reset", description: "The current puzzle has been reset." });
 
       const initialGameTurn = chess.turn();
       const userPlaysAs = puzzle.orientation.charAt(0);
@@ -270,22 +250,22 @@ export default function Home() {
 
   const handleShowHint = () => {
     if (!puzzle || !chessInstance || !isUserTurn || isPuzzleSolved) {
-      toast({ title: t('toastHintUnavailableTitle'), description: t('toastHintUnavailableDescription'), variant: "default" });
+      toast({ title: "Hint Unavailable", description: "Cannot show hint at this time.", variant: "default" });
       return;
     }
     if (currentMoveIndex >= solutionMoves.length || !solutionMoves[currentMoveIndex]) {
-      toast({ title: t('toastHintErrorTitle'), description: t('toastHintErrorNoMoves'), variant: "destructive" });
+      toast({ title: "Hint Error", description: "No more moves in the solution for a hint.", variant: "destructive" });
       return;
     }
 
     const nextMoveUci = solutionMoves[currentMoveIndex];
     if (nextMoveUci.length < 2) { 
-      toast({ title: t('toastHintErrorTitle'), description: t('toastHintErrorInvalidFormat'), variant: "destructive" });
+      toast({ title: "Hint Error", description: "Invalid solution move format for hint.", variant: "destructive" });
       return;
     }
     const sourceSq = nextMoveUci.substring(0, 2) as Square;
     setHintSquare(sourceSq);
-    toast({ title: t('toastHintActivatedTitle'), description: t('toastHintActivatedDescription', { square: sourceSq }), duration: 3000 });
+    toast({ title: "Hint Activated", description: `The piece on ${sourceSq} is highlighted.`, duration: 3000 });
   };
 
   const boardWrapperStyle: CSSProperties = {
@@ -303,12 +283,12 @@ export default function Home() {
         <div className="flex-1 text-center">
           <h1 className="text-5xl font-bold text-primary flex items-center justify-center">
             <Brain className="w-12 h-12 mr-3 text-accent" />
-            {t('appName')}
+            ChessEnigma
           </h1>
-          <p className="text-muted-foreground mt-1 text-lg">{t('appSubtitle')}</p>
+          <p className="text-muted-foreground mt-1 text-lg">Solve chess puzzles and sharpen your tactical mind.</p>
         </div>
         <div className="flex-1 flex justify-end">
-          <LanguageSwitcher />
+          {/* LanguageSwitcher was here */}
         </div>
       </header>
 
@@ -336,40 +316,35 @@ export default function Home() {
         <div className="w-full lg:w-1/3 space-y-4">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-primary">{t('controlsAndStatusTitle')}</CardTitle>
+              <CardTitle className="text-2xl text-primary">Controls & Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button onClick={fetchNewPuzzle} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-                {t('newPuzzleButton')}
+                New Puzzle
               </Button>
               <Button onClick={handleResetPuzzle} variant="outline" className="w-full" disabled={isLoading || !puzzle}>
-                {t('resetPuzzleButton')}
+                Reset Current Puzzle
               </Button>
               <Button onClick={handleShowHint} variant="outline" className="w-full" disabled={isLoading || !puzzle || !isUserTurn || isPuzzleSolved}>
                 <Lightbulb className="mr-2 h-4 w-4" />
-                {t('showHintButton')}
+                Show Hint
               </Button>
               <div className="p-3 bg-muted rounded-md text-center">
                 {isPuzzleSolved ? (
-                  <p className="font-semibold text-green-600">{t('statusPuzzleSolved')}</p>
+                  <p className="font-semibold text-green-600">Puzzle Solved! Well done!</p>
                 ) : isLoading ? (
-                  <p className="font-semibold text-primary">{t('statusLoadingPuzzle')}</p>
+                  <p className="font-semibold text-primary">Loading puzzle...</p>
                 ) : puzzle && chessInstance && isUserTurn ? (
                   <p className="font-semibold text-accent-foreground animate-pulse">
-                    {t('statusYourTurn', { 
-                      orientation: puzzle.orientation, 
-                      engineTurn: chessInstance.turn() === 'w' ? t('playerTurnWhite') : t('playerTurnBlack')
-                    })}
+                    {`Your turn (${puzzle.orientation}). Engine: ${chessInstance.turn() === 'w' ? 'White' : 'Black'} to move.`}
                   </p>
                 ) : puzzle && chessInstance ? (
                   <p className="font-semibold text-primary">
-                    {t('statusAppThinking', { 
-                      engineTurn: chessInstance.turn() === 'w' ? t('playerTurnWhite') : t('playerTurnBlack')
-                    })}
+                    {`App is thinking... (${chessInstance.turn() === 'w' ? 'White' : 'Black'} to move)`}
                   </p>
                 ): (
-                   <p className="font-semibold text-primary">{t('statusAppThinkingFallback')}</p>
+                   <p className="font-semibold text-primary">App is thinking...</p>
                 )}
               </div>
             </CardContent>
@@ -377,12 +352,12 @@ export default function Home() {
 
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-primary">{t('moveHistoryTitle')}</CardTitle>
+              <CardTitle className="text-2xl text-primary">Move History</CardTitle>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-48 w-full rounded-md border p-3 bg-muted/30">
                 {moveHistory.length === 0 ? (
-                  <p className="text-muted-foreground italic">{t('moveHistoryEmpty')}</p>
+                  <p className="text-muted-foreground italic">No moves yet.</p>
                 ) : (
                   <ol className="list-none list-inside space-y-1">
                     {moveHistory.map((move, index) => (
@@ -399,12 +374,11 @@ export default function Home() {
       <footer className="mt-auto pt-10 pb-4 text-center text-sm text-muted-foreground">
         <p>
           {currentYear !== null
-            ? t('footerCopyright', { year: currentYear })
-            : t('footerCopyrightLoading')}
+            ? `© ${currentYear} ChessEnigma. All rights reserved.`
+            : `© ChessEnigma. All rights reserved.`}
         </p>
-        <p>{t('footerPoweredBy')}</p>
+        <p>Powered by Next.js, TailwindCSS, and a passion for chess.</p>
       </footer>
     </div>
   );
 }
-

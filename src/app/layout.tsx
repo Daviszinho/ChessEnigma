@@ -3,7 +3,6 @@ import type {Metadata} from 'next';
 // import {Geist, Geist_Mono} from 'next/font/google'; // Temporarily commented out
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { LocaleProvider } from '@/context/LocaleContext';
 
 /* // Temporarily commented out
 const geistSans = Geist({
@@ -29,11 +28,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      {/* Temporarily remove font variables, original: className={`${geistSans.variable} ${geistMono.variable} antialiased`} */}
       <body className="antialiased">
-        <LocaleProvider>
           {children}
           <Toaster />
-        </LocaleProvider>
       </body>
     </html>
   );
