@@ -2,7 +2,7 @@
 import type {Metadata} from 'next';
 // import {Geist, Geist_Mono} from 'next/font/google'; // Temporarily commented out
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster"; 
+import { Toaster } from "@/components/ui/toaster";
 import { LocaleProvider } from '@/context/LocaleContext';
 
 /* // Temporarily commented out
@@ -28,9 +28,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* Default lang, LocaleContext will update client-side */}
-      {/* <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}> */}
-      <body className="antialiased"> {/* Temporarily remove font variables */}
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased">
         <LocaleProvider>
           {children}
           <Toaster />
