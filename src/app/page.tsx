@@ -48,9 +48,11 @@ export default function Home() {
     const userPlaysAs = newPuzzle.orientation.charAt(0); // 'w' or 'b'
 
     if (initialGameTurn === userPlaysAs) {
-      setIsUserTurn(true); 
+      // It's user's turn to make the first solution move
+      setIsUserTurn(true);
     } else {
-      setIsUserTurn(false); 
+      // It's app's turn to make the first solution move
+      setIsUserTurn(false);
     }
   }, []);
 
@@ -84,7 +86,7 @@ export default function Home() {
       return;
     }
     setHintSquare(null);
-    
+
     const moveNotation = solutionMoves[currentMoveIndex];
     const moveResult = chessInstance.move(moveNotation, { sloppy: true });
 
@@ -115,7 +117,7 @@ export default function Home() {
     if (puzzle && chessInstance && !isLoading && !isPuzzleSolved && !isUserTurn && currentMoveIndex < solutionMoves.length) {
         const timer = setTimeout(() => {
           makeAppMove();
-        }, 500); 
+        }, 500);
         return () => clearTimeout(timer);
     }
   }, [puzzle, chessInstance, isLoading, isPuzzleSolved, isUserTurn, currentMoveIndex, solutionMoves, makeAppMove]);
@@ -132,34 +134,39 @@ export default function Home() {
         toast({ title: "Not Your Piece", description: `You are playing as ${puzzle.orientation}. You can only move ${puzzle.orientation} pieces.`, variant: "destructive"});
         return false;
     }
-    
+
     if (chessInstance.turn() !== userPlaysAsColor) {
-        toast({ title: "Not Your Turn", description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn according to the board.`, variant: "destructive"});
+        toast({ title: "Not Your Turn", description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn. You are playing as ${puzzle.orientation}.`, variant: "destructive"});
         return false;
     }
 
     const attemptedMoveUci = `${sourceSquare}${targetSquare}`;
     let promotionChar = '';
+    // Check for pawn promotion
     if ((piece === 'wP' && targetSquare.endsWith('8')) || (piece === 'bP' && targetSquare.endsWith('1'))) {
-      promotionChar = 'q'; 
+      // Default to queen promotion for puzzles, can be made more interactive if needed
+      promotionChar = 'q';
     }
-    
+
     const expectedMoveUciWithOptionalPromotion = solutionMoves[currentMoveIndex];
-    
+    // The expected move might or might not have a promotion character.
+    // The actual move from chess.js will include it if promotion occurred.
+
     const moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
 
-    if (!moveResult) { 
+    if (!moveResult) {
       toast({ title: "Illegal Move", description: "That move is not allowed.", variant: "destructive", action: <XCircle className="text-red-500" /> });
-      return false; 
+      return false;
     }
 
+    // Compare the core move (e.g., "e7e8") ignoring promotion for the check against solution if solution doesn't specify promotion char
     const madeMoveUci = moveResult.from + moveResult.to + (moveResult.promotion || '');
 
     if (madeMoveUci.toLowerCase() === expectedMoveUciWithOptionalPromotion.toLowerCase()) {
       toast({ title: "Correct Move!", description: `You played ${moveResult.san}.`, action: <CheckCircle className="text-green-500" /> });
       setCurrentFen(chessInstance.fen());
       setMoveHistory(prev => [...prev, `${Math.floor(currentMoveIndex / 2) + 1}. (You) ${moveResult.san}`]);
-      
+
       const newMoveIndex = currentMoveIndex + 1;
       setCurrentMoveIndex(newMoveIndex);
 
@@ -171,14 +178,14 @@ export default function Home() {
           action: <CheckCircle className="text-green-500" />,
         });
       } else {
-        setIsUserTurn(false); 
+        setIsUserTurn(false); // App's turn
       }
-      return true; 
+      return true;
     } else {
       toast({ title: "Incorrect Move", description: `Expected the solution move, but you played ${moveResult.san}. Try again.`, variant: "destructive", action: <XCircle className="text-red-500" /> });
-      chessInstance.undo(); 
-      setCurrentFen(chessInstance.fen()); 
-      return false; 
+      chessInstance.undo(); // Revert the move
+      setCurrentFen(chessInstance.fen()); // Update FEN back to before the incorrect move
+      return false;
     }
   };
 
@@ -192,7 +199,7 @@ export default function Home() {
       setIsPuzzleSolved(false);
       setMoveHistory([]);
       setHintSquare(null);
-      setIsLoading(false); 
+      setIsLoading(false);
       toast({ title: "Puzzle Reset", description: "The current puzzle has been reset." });
 
       const initialGameTurn = chess.turn();
@@ -200,7 +207,7 @@ export default function Home() {
       if (initialGameTurn === userPlaysAs) {
         setIsUserTurn(true);
       } else {
-        setIsUserTurn(false); 
+        setIsUserTurn(false); // App will make the first move
       }
     }
   };
@@ -216,15 +223,16 @@ export default function Home() {
     }
 
     const nextMoveUci = solutionMoves[currentMoveIndex];
-    if (nextMoveUci.length < 2) {
+    if (nextMoveUci.length < 2) { // Should be at least 4 for a valid UCI move like "e2e4"
       toast({ title: "Hint Error", description: "Invalid solution move format for hint.", variant: "destructive" });
       return;
     }
     const sourceSq = nextMoveUci.substring(0, 2) as Square;
+    console.log(`[Home Page] Setting hintSquare to: ${sourceSq}`);
     setHintSquare(sourceSq);
     toast({ title: "Hint Activated", description: `The piece on ${sourceSq} is highlighted.`, duration: 3000 });
   };
-  
+
   const boardWrapperStyle: CSSProperties = {
     display: 'flex',
     justifyContent: 'center',
@@ -288,8 +296,8 @@ export default function Home() {
                   <p className="font-semibold text-primary">Loading puzzle...</p>
                 ) : puzzle && isUserTurn ? (
                   <p className="font-semibold text-accent-foreground animate-pulse">Your turn ({puzzle.orientation}) to move.</p>
-                ) : puzzle ? (
-                  <p className="font-semibold text-primary">App is thinking... ({chessInstance?.turn() === 'w' ? "White" : "Black"} to move)</p>
+                ) : puzzle && chessInstance ? (
+                  <p className="font-semibold text-primary">App is thinking... ({chessInstance.turn() === 'w' ? "White" : "Black"} to move)</p>
                 ): (
                    <p className="font-semibold text-primary">App is thinking...</p>
                 )}

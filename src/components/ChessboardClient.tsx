@@ -37,10 +37,10 @@ export default function ChessboardClient({
   const getCustomSquareStyles = () => {
     const styles: { [square: string]: CSSProperties } = {};
     if (hintSquare) {
-      // Using HSL variables from globals.css for consistency
-      // The accent color is orange by default. We add transparency.
+      console.log(`[ChessboardClient] Applying hint style to square: ${hintSquare}`);
       styles[hintSquare] = {
-        backgroundColor: 'hsla(var(--accent), 0.5)', // 50% opacity for accent color
+        backgroundColor: 'rgba(255, 255, 0, 0.7)', // Bright yellow, semi-transparent
+        boxShadow: 'inset 0 0 0 3px red', // Strong red inner border
       };
     }
     return styles;
@@ -56,15 +56,15 @@ export default function ChessboardClient({
         arePiecesDraggable={arePiecesDraggable}
         customBoardStyle={{
           borderRadius: "var(--radius)",
-          overflow: 'hidden', 
+          overflow: 'hidden',
           ...customBoardStyle,
         }}
         customDarkSquareStyle={customDarkSquareStyle}
         customLightSquareStyle={customLightSquareStyle}
         customSquareStyles={getCustomSquareStyles()}
-        customPieces={{}} 
+        customPieces={{}}
         animationDuration={200}
-        dropOffBoard="snapback" 
+        dropOffBoard="snapback"
       />
     </div>
   );
