@@ -228,7 +228,6 @@ export default function Home() {
       return;
     }
     const sourceSq = nextMoveUci.substring(0, 2) as Square;
-    console.log(`[Home Page] Setting hintSquare to: ${sourceSq}`);
     setHintSquare(sourceSq);
     toast({ title: "Hint Activated", description: `The piece on ${sourceSq} is highlighted.`, duration: 3000 });
   };

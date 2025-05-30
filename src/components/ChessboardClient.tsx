@@ -37,7 +37,6 @@ export default function ChessboardClient({
   const getCustomSquareStyles = () => {
     const styles: { [square: string]: CSSProperties } = {};
     if (hintSquare) {
-      console.log(`[ChessboardClient] Applying hint style to square: ${hintSquare}`);
       styles[hintSquare] = {
         backgroundColor: 'rgba(255, 255, 0, 0.7)', // Bright yellow, semi-transparent
         boxShadow: 'inset 0 0 0 3px red', // Strong red inner border
