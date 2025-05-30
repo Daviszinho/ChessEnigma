@@ -54,13 +54,13 @@ export default function Home() {
     setHintSquare(null);
     setIsLoading(false);
 
-    const initialGameTurn = chess.turn(); 
+    const initialGameTurn = chess.turn();
     const userPlaysAs = newPuzzle.orientation.charAt(0);
 
     if (initialGameTurn === userPlaysAs) {
       setIsUserTurn(true);
     } else {
-      setIsUserTurn(false); 
+      setIsUserTurn(false);
     }
   }, []);
 
@@ -72,7 +72,7 @@ export default function Home() {
       initializeNewPuzzle(newPuzzleData);
     } catch (error) {
       console.error("Original error fetching puzzle:", error);
-      setIsLoading(false); 
+      setIsLoading(false);
 
       let toastTitle = "Error Fetching Puzzle";
       let toastDescription = "An unexpected error occurred while fetching a new puzzle. Please try again later.";
@@ -80,7 +80,7 @@ export default function Home() {
       if (error instanceof Error && error.message) {
         const lowerCaseErrorMessage = error.message.toLowerCase();
         if (lowerCaseErrorMessage !== 'failed to fetch' && lowerCaseErrorMessage !== 'typeerror: failed to fetch') {
-          toastDescription = error.message; 
+          toastDescription = error.message;
         }
       }
       
@@ -112,10 +112,10 @@ export default function Home() {
 
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
-      const moveNumberDisplay = Math.floor(currentMoveIndex / 2) + 1;
+      const moveNumberForDisplay = Math.floor(currentMoveIndex / 2) + 1;
       const playerTag = '(App)';
       const turnIndicator = moveResult.color === 'w' ? '.' : '...';
-      const historyText = `${moveNumberDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
+      const historyText = `${moveNumberForDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
       
       const newMoveIndex = currentMoveIndex + 1;
@@ -133,7 +133,13 @@ export default function Home() {
       }
     } else {
       console.error("Invalid app move in solution:", moveNotation, "FEN:", chessInstance.fen());
-      toast({ title: "Puzzle Error", description: "The puzzle has an invalid move for the app.", variant: "destructive" });
+      toast({ 
+        title: "Puzzle Error", 
+        description: "The puzzle solution has an invalid move for the app. Please try a new puzzle.", 
+        variant: "destructive" 
+      });
+      setIsLoading(false); // Ensure loading is off if puzzle is broken
+      setIsUserTurn(true); // Give control to user to prevent app loop on broken puzzle
     }
   }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle]);
 
@@ -154,18 +160,18 @@ export default function Home() {
 
     const userPlaysAsColor = puzzle.orientation.charAt(0);
     if (piece.charAt(0).toLowerCase() !== userPlaysAsColor) {
-        toast({ 
-          title: "Not Your Piece", 
-          description: `You are playing as ${puzzle.orientation}. You can only move ${puzzle.orientation} pieces.`, 
+        toast({
+          title: "Not Your Piece",
+          description: `You are playing as ${puzzle.orientation}. You can only move ${puzzle.orientation} pieces.`,
           variant: "destructive"
         });
         return false;
     }
 
     if (chessInstance.turn() !== userPlaysAsColor) {
-        toast({ 
-          title: "Not Your Turn", 
-          description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn. You are playing as ${puzzle.orientation}.`, 
+        toast({
+          title: "Not Your Turn",
+          description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn. You are playing as ${puzzle.orientation}.`,
           variant: "destructive"
         });
         return false;
@@ -174,15 +180,15 @@ export default function Home() {
     const attemptedMoveUci = `${sourceSquare}${targetSquare}`;
     let promotionChar = '';
     if ((piece === 'wP' && targetSquare.endsWith('8')) || (piece === 'bP' && targetSquare.endsWith('1'))) {
-      promotionChar = 'q'; 
+      promotionChar = 'q';
     }
 
     const expectedMoveUciWithOptionalPromotion = solutionMoves[currentMoveIndex];
     const moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
 
-    if (!moveResult) { 
+    if (!moveResult) {
       toast({ title: "Illegal Move", description: "That move is not allowed.", variant: "destructive", action: <XCircle className="text-red-500" /> });
-      setCurrentFen(chessInstance.fen()); 
+      setCurrentFen(chessInstance.fen());
       return false;
     }
 
@@ -192,10 +198,10 @@ export default function Home() {
       toast({ title: "Correct Move!", description: `You played ${moveResult.san}.`, action: <CheckCircle className="text-green-500" /> });
       setCurrentFen(chessInstance.fen());
       
-      const moveNumberDisplay = Math.floor(currentMoveIndex / 2) + 1;
+      const moveNumberForDisplay = Math.floor(currentMoveIndex / 2) + 1;
       const playerTag = '(You)';
       const turnIndicator = moveResult.color === 'w' ? '.' : '...';
-      const historyText = `${moveNumberDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
+      const historyText = `${moveNumberForDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
 
       const newMoveIndex = currentMoveIndex + 1;
@@ -213,14 +219,14 @@ export default function Home() {
       }
       return true;
     } else {
-      toast({ 
-        title: "Incorrect Move", 
-        description: `Expected the solution move, but you played ${moveResult.san}. Try again.`, 
-        variant: "destructive", 
-        action: <XCircle className="text-red-500" /> 
+      toast({
+        title: "Incorrect Move",
+        description: `Expected the solution move, but you played ${moveResult.san}. Try again.`,
+        variant: "destructive",
+        action: <XCircle className="text-red-500" />
       });
-      chessInstance.undo(); 
-      setCurrentFen(chessInstance.fen()); 
+      chessInstance.undo();
+      setCurrentFen(chessInstance.fen());
       return false;
     }
   };
@@ -235,7 +241,7 @@ export default function Home() {
       setIsPuzzleSolved(false);
       setMoveHistory([]);
       setHintSquare(null);
-      setIsLoading(false); 
+      setIsLoading(false);
       toast({ title: "Puzzle Reset", description: "The current puzzle has been reset." });
 
       const initialGameTurn = chess.turn();
@@ -243,7 +249,7 @@ export default function Home() {
       if (initialGameTurn === userPlaysAs) {
         setIsUserTurn(true);
       } else {
-        setIsUserTurn(false); 
+        setIsUserTurn(false);
       }
     }
   };
@@ -259,7 +265,7 @@ export default function Home() {
     }
 
     const nextMoveUci = solutionMoves[currentMoveIndex];
-    if (nextMoveUci.length < 2) { 
+    if (nextMoveUci.length < 2) {
       toast({ title: "Hint Error", description: "Invalid solution move format for hint.", variant: "destructive" });
       return;
     }
@@ -288,7 +294,6 @@ export default function Home() {
           <p className="text-muted-foreground mt-1 text-lg">Solve chess puzzles and sharpen your tactical mind.</p>
         </div>
         <div className="flex-1 flex justify-end">
-          {/* LanguageSwitcher was here */}
         </div>
       </header>
 
@@ -382,3 +387,4 @@ export default function Home() {
     </div>
   );
 }
+
