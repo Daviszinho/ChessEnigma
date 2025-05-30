@@ -155,7 +155,10 @@ export default function Home() {
     const moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
 
     if (!moveResult) {
+      // This case should ideally be caught by the checks above if it's a turn issue.
+      // If it's another type of illegal move (e.g., moving into check, piece cannot make that move), this will catch it.
       toast({ title: "Illegal Move", description: "That move is not allowed.", variant: "destructive", action: <XCircle className="text-red-500" /> });
+      setCurrentFen(chessInstance.fen()); // Ensure FEN is synced even if move is illegal (chess.js might not change it, but good practice)
       return false;
     }
 
@@ -223,7 +226,7 @@ export default function Home() {
     }
 
     const nextMoveUci = solutionMoves[currentMoveIndex];
-    if (nextMoveUci.length < 2) { // Should be at least 4 for a valid UCI move like "e2e4"
+    if (nextMoveUci.length < 2) { // Should be at least 2 for source square like "e2"
       toast({ title: "Hint Error", description: "Invalid solution move format for hint.", variant: "destructive" });
       return;
     }
@@ -293,8 +296,10 @@ export default function Home() {
                   <p className="font-semibold text-green-600">Puzzle Solved! Well done!</p>
                 ) : isLoading ? (
                   <p className="font-semibold text-primary">Loading puzzle...</p>
-                ) : puzzle && isUserTurn ? (
-                  <p className="font-semibold text-accent-foreground animate-pulse">Your turn ({puzzle.orientation}) to move.</p>
+                ) : puzzle && chessInstance && isUserTurn ? (
+                  <p className="font-semibold text-accent-foreground animate-pulse">
+                    Your turn ({puzzle.orientation}). Engine: {chessInstance.turn() === 'w' ? 'White' : 'Black'} to move.
+                  </p>
                 ) : puzzle && chessInstance ? (
                   <p className="font-semibold text-primary">App is thinking... ({chessInstance.turn() === 'w' ? "White" : "Black"} to move)</p>
                 ): (
@@ -332,3 +337,4 @@ export default function Home() {
     </div>
   );
 }
+
