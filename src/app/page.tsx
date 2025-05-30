@@ -37,7 +37,9 @@ export default function Home() {
   const { t, currentLocale } = useTranslation();
 
   useEffect(() => {
-    document.title = t('appName');
+    if (t && currentLocale) {
+        document.title = t('appName');
+    }
   }, [t, currentLocale]);
 
   useEffect(() => {
@@ -57,14 +59,12 @@ export default function Home() {
     setHintSquare(null);
     setIsLoading(false);
 
-    const initialGameTurn = chess.turn(); // 'w' or 'b'
-    const userPlaysAs = newPuzzle.orientation.charAt(0); // 'w' or 'b'
+    const initialGameTurn = chess.turn(); 
+    const userPlaysAs = newPuzzle.orientation.charAt(0);
 
     if (initialGameTurn === userPlaysAs) {
-      // It's user's turn to make the first solution move
       setIsUserTurn(true);
     } else {
-      // It's app's turn to make the first solution move
       setIsUserTurn(false); 
     }
   }, []);
@@ -76,23 +76,41 @@ export default function Home() {
       const newPuzzleData = await getPuzzleAction();
       initializeNewPuzzle(newPuzzleData);
     } catch (error) {
-      console.error("Failed to fetch puzzle:", error);
-      let toastDescription = t('toastErrorFetchingPuzzleDescription'); // Default generic message
+      console.error("Original error fetching puzzle:", error);
+      setIsLoading(false); // Ensure loading state is reset
 
-      if (error instanceof Error && error.message) {
-        const lowerCaseErrorMessage = error.message.toLowerCase();
-        // Only use error.message if it's more specific than the generic "Failed to fetch"
-        if (lowerCaseErrorMessage !== 'failed to fetch' && lowerCaseErrorMessage !== 'typeerror: failed to fetch') {
-          toastDescription = error.message;
+      try {
+        let toastTitle = "Error"; // Fallback title
+        let toastDescription = "An unexpected error occurred while fetching a new puzzle. Please try again later."; // Fallback description
+
+        if (typeof t === 'function') {
+          toastTitle = t('toastErrorFetchingPuzzleTitle');
+          toastDescription = t('toastErrorFetchingPuzzleDescription');
+
+          if (error instanceof Error && error.message) {
+            const lowerCaseErrorMessage = error.message.toLowerCase();
+            // Only use error.message if it's more specific than the generic "Failed to fetch"
+            if (lowerCaseErrorMessage !== 'failed to fetch' && lowerCaseErrorMessage !== 'typeerror: failed to fetch') {
+              toastDescription = error.message; // Use the specific error from the backend
+            }
+          }
+        } else {
+          // t function might not be available, use raw error message if possible
+          if (error instanceof Error && error.message) {
+            toastDescription = error.message;
+          }
         }
+        
+        toast({
+          title: toastTitle,
+          description: toastDescription,
+          variant: "destructive",
+        });
+      } catch (toastError) {
+        console.error("Error displaying toast notification:", toastError);
+        // Fallback alert if the toast mechanism itself fails
+        alert("Failed to fetch puzzle. An additional error occurred while trying to display the error message.");
       }
-      
-      toast({
-        title: t('toastErrorFetchingPuzzleTitle'),
-        description: toastDescription,
-        variant: "destructive",
-      });
-      setIsLoading(false);
     }
   }, [initializeNewPuzzle, toast, t]);
 
@@ -112,7 +130,7 @@ export default function Home() {
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
       const moveNumberDisplay = Math.floor(currentMoveIndex / 2) + 1;
-      const playerTag = "(App)";
+      const playerTag = `(${t('playerTagApp') || 'App'})`; // Added fallback for t
       const turnIndicator = moveResult.color === 'w' ? '.' : '...';
       const historyText = `${moveNumberDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
@@ -176,7 +194,7 @@ export default function Home() {
     const attemptedMoveUci = `${sourceSquare}${targetSquare}`;
     let promotionChar = '';
     if ((piece === 'wP' && targetSquare.endsWith('8')) || (piece === 'bP' && targetSquare.endsWith('1'))) {
-      promotionChar = 'q'; // Default to queen promotion
+      promotionChar = 'q'; 
     }
 
     const expectedMoveUciWithOptionalPromotion = solutionMoves[currentMoveIndex];
@@ -195,7 +213,7 @@ export default function Home() {
       setCurrentFen(chessInstance.fen());
       
       const moveNumberDisplay = Math.floor(currentMoveIndex / 2) + 1;
-      const playerTag = `(${t('playerTagYou') || 'You'})`;
+      const playerTag = `(${t('playerTagYou') || 'You'})`; // Added fallback for t
       const turnIndicator = moveResult.color === 'w' ? '.' : '...';
       const historyText = `${moveNumberDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
@@ -237,7 +255,7 @@ export default function Home() {
       setIsPuzzleSolved(false);
       setMoveHistory([]);
       setHintSquare(null);
-      setIsLoading(false); // No longer loading after reset
+      setIsLoading(false); 
       toast({ title: t('toastPuzzleResetTitle'), description: t('toastPuzzleResetDescription') });
 
       const initialGameTurn = chess.turn();
@@ -281,7 +299,7 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center min-h-screen bg-background text-foreground p-4 font-sans">
       <header className="my-6 text-center w-full flex justify-between items-center px-4">
-        <div className="flex-1"></div> {/* Spacer */}
+        <div className="flex-1"></div> {}
         <div className="flex-1 text-center">
           <h1 className="text-5xl font-bold text-primary flex items-center justify-center">
             <Brain className="w-12 h-12 mr-3 text-accent" />

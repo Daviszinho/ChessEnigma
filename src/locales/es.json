@@ -17,6 +17,7 @@
   "footerCopyrightLoading": "© ChessEnigma. Todos los derechos reservados.",
   "footerPoweredBy": "Impulsado por Next.js, TailwindCSS y una pasión por el ajedrez.",
   "playerTagYou": "Tú",
+  "playerTagApp": "App",
 
   "toastErrorFetchingPuzzleTitle": "Error al Obtener Acertijo",
   "toastErrorFetchingPuzzleDescription": "Ocurrió un error inesperado al obtener un nuevo acertijo. Por favor, inténtalo de nuevo más tarde.",

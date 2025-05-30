@@ -17,6 +17,7 @@
   "footerCopyrightLoading": "© ChessEnigma. All rights reserved.",
   "footerPoweredBy": "Powered by Next.js, TailwindCSS, and a passion for chess.",
   "playerTagYou": "You",
+  "playerTagApp": "App",
 
   "toastErrorFetchingPuzzleTitle": "Error Fetching Puzzle",
   "toastErrorFetchingPuzzleDescription": "An unexpected error occurred while fetching a new puzzle. Please try again later.",
