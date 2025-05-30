@@ -29,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <LocaleProvider>
-      <html lang="en"> {/* Default lang, LocaleContext will update client-side */}
+      <html lang="en" suppressHydrationWarning> {/* Default lang, LocaleContext will update client-side */}
         {/* <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}> */}
         <body className="antialiased"> {/* Temporarily remove font variables */}
           {children}
