@@ -16,6 +16,19 @@ import { getPuzzleAction, type Puzzle } from './actions';
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, RefreshCcw, Brain, Loader2, Lightbulb } from 'lucide-react';
 
+const getEffectiveOrientation = (
+  fenTurn: 'w' | 'b',
+  solutionLength: number,
+  providedOrientation: 'white' | 'black'
+): 'white' | 'black' => {
+  const isSolutionEven = solutionLength > 0 && solutionLength % 2 === 0;
+  if (isSolutionEven) {
+    // If FEN is White to move and solution is even, user plays Black.
+    // If FEN is Black to move and solution is even, user plays White.
+    return fenTurn === 'w' ? 'black' : 'white';
+  }
+  return providedOrientation; // Otherwise, use the orientation from the data source.
+};
 
 export default function Home() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
@@ -43,34 +56,44 @@ export default function Home() {
 
   const initializeNewPuzzle = useCallback((newPuzzle: Puzzle) => {
     console.log("--- Initializing New Puzzle ---");
-    console.log("Received Puzzle Data:", JSON.stringify(newPuzzle));
+    console.log("Received Puzzle Data from source:", JSON.stringify(newPuzzle));
     
     const chess = new Chess(newPuzzle.fen);
+    const initialGameTurn = chess.turn(); // 'w' or 'b'
+    const parsedSolutionMoves = newPuzzle.solution.trim() ? newPuzzle.solution.split(' ') : [];
+    const numSolutionMoves = parsedSolutionMoves.length;
+    
+    const effectiveOrientation = getEffectiveOrientation(initialGameTurn, numSolutionMoves, newPuzzle.orientation);
+
     setPuzzle(newPuzzle);
     setCurrentFen(chess.fen());
-    setBoardOrientation(newPuzzle.orientation);
+    setBoardOrientation(effectiveOrientation); // Use effective orientation
     setChessInstance(chess);
-    setSolutionMoves(newPuzzle.solution.split(' '));
+    setSolutionMoves(parsedSolutionMoves);
     setCurrentMoveIndex(0);
     setIsPuzzleSolved(false);
     setMoveHistory([]);
     setHintSquare(null);
     setIsLoading(false);
 
-    const initialGameTurn = chess.turn();
-    const userPlaysAs = newPuzzle.orientation.charAt(0);
+    const userPlaysAs = effectiveOrientation.charAt(0); // 'w' or 'b'
 
     console.log("FEN indicates turn for:", initialGameTurn === 'w' ? 'White' : 'Black');
-    console.log("User plays as:", newPuzzle.orientation);
+    console.log("Data source orientation:", newPuzzle.orientation);
+    console.log("Solution length:", numSolutionMoves);
+    console.log("Calculated effective user orientation:", effectiveOrientation);
+    console.log("User effectively plays as:", userPlaysAs === 'w' ? 'White' : 'Black');
     
-    let initialIsUserTurn;
+    let newIsUserTurn;
     if (initialGameTurn === userPlaysAs) {
-      initialIsUserTurn = true;
+      // It's user's turn (based on effective orientation) to make the first move of the solution sequence
+      newIsUserTurn = true;
     } else {
-      initialIsUserTurn = false;
+      // It's app's turn (based on effective orientation) to make the first move of the solution sequence
+      newIsUserTurn = false;
     }
-    setIsUserTurn(initialIsUserTurn);
-    console.log("Initial isUserTurn set to:", initialIsUserTurn);
+    setIsUserTurn(newIsUserTurn);
+    console.log("Initial isUserTurn set to:", newIsUserTurn);
     console.log("--- End Puzzle Initialization Log ---");
 
   }, []);
@@ -103,7 +126,6 @@ export default function Home() {
           variant: "destructive",
         });
       } catch (toastError) {
-        // Fallback if toast itself fails
         console.error("Error displaying toast notification:", toastError);
         alert("Failed to fetch puzzle. An additional error occurred while trying to display the error message.");
       }
@@ -125,10 +147,13 @@ export default function Home() {
 
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
-      const moveNumberForDisplay = Math.floor(currentMoveIndex / 2) + 1;
+      const moveNumber = Math.floor(currentMoveIndex / 2) + 1;
       const playerTag = '(App)';
       const turnIndicator = moveResult.color === 'w' ? '.' : '...';
-      const historyText = `${moveNumberForDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
+      // Only add move number for white's move or if it's the first move in the list
+      const historyText = (moveResult.color === 'w' || moveHistory.length === 0) 
+        ? `${moveNumber}${turnIndicator} ${playerTag} ${moveResult.san}`
+        : `${playerTag} ${moveResult.san}`; // Black's move doesn't repeat number
       setMoveHistory(prev => [...prev, historyText]);
       
       const newMoveIndex = currentMoveIndex + 1;
@@ -151,10 +176,10 @@ export default function Home() {
         description: "The puzzle solution has an invalid move for the app. Please try a new puzzle.", 
         variant: "destructive" 
       });
-      setIsUserTurn(true); // Give control back to user if app move is broken
+      setIsUserTurn(true); 
       setIsLoading(false);
     }
-  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle]);
+  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle, moveHistory]);
 
   useEffect(() => {
     if (puzzle && chessInstance && !isLoading && !isPuzzleSolved && !isUserTurn && currentMoveIndex < solutionMoves.length) {
@@ -171,11 +196,11 @@ export default function Home() {
       return false;
     }
 
-    const userPlaysAsColor = puzzle.orientation.charAt(0);
+    const userPlaysAsColor = boardOrientation.charAt(0); // Use boardOrientation (effective orientation)
     if (piece.charAt(0).toLowerCase() !== userPlaysAsColor) {
         toast({
           title: "Not Your Piece",
-          description: `You are playing as ${puzzle.orientation}. You can only move ${puzzle.orientation} pieces.`,
+          description: `You are playing as ${boardOrientation}. You can only move ${boardOrientation} pieces.`,
           variant: "destructive"
         });
         return false;
@@ -184,7 +209,7 @@ export default function Home() {
     if (chessInstance.turn() !== userPlaysAsColor) {
         toast({
           title: "Not Your Turn",
-          description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn. You are playing as ${puzzle.orientation}.`,
+          description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn. You are playing as ${boardOrientation}.`,
           variant: "destructive"
         });
         return false;
@@ -211,10 +236,12 @@ export default function Home() {
       toast({ title: "Correct Move!", description: `You played ${moveResult.san}.`, action: <CheckCircle className="text-green-500" /> });
       setCurrentFen(chessInstance.fen());
       
-      const moveNumberForDisplay = Math.floor(currentMoveIndex / 2) + 1;
+      const moveNumber = Math.floor(currentMoveIndex / 2) + 1;
       const playerTag = '(You)';
       const turnIndicator = moveResult.color === 'w' ? '.' : '...';
-      const historyText = `${moveNumberForDisplay}${turnIndicator} ${playerTag} ${moveResult.san}`;
+      const historyText = (moveResult.color === 'w' || moveHistory.length === 0)
+        ? `${moveNumber}${turnIndicator} ${playerTag} ${moveResult.san}`
+        : `${playerTag} ${moveResult.san}`;
       setMoveHistory(prev => [...prev, historyText]);
 
       const newMoveIndex = currentMoveIndex + 1;
@@ -247,9 +274,15 @@ export default function Home() {
   const handleResetPuzzle = () => {
     if (puzzle) {
       const chess = new Chess(puzzle.fen);
+      const initialGameTurn = chess.turn();
+      const parsedSolutionMoves = puzzle.solution.trim() ? puzzle.solution.split(' ') : [];
+      const numSolutionMoves = parsedSolutionMoves.length;
+      const effectiveOrientation = getEffectiveOrientation(initialGameTurn, numSolutionMoves, puzzle.orientation);
+      
       setCurrentFen(chess.fen());
-      setBoardOrientation(puzzle.orientation);
+      setBoardOrientation(effectiveOrientation);
       setChessInstance(chess);
+      setSolutionMoves(parsedSolutionMoves);
       setCurrentMoveIndex(0);
       setIsPuzzleSolved(false);
       setMoveHistory([]);
@@ -257,13 +290,24 @@ export default function Home() {
       setIsLoading(false);
       toast({ title: "Puzzle Reset", description: "The current puzzle has been reset." });
 
-      const initialGameTurn = chess.turn();
-      const userPlaysAs = puzzle.orientation.charAt(0);
+      const userPlaysAs = effectiveOrientation.charAt(0);
+      let newIsUserTurn;
       if (initialGameTurn === userPlaysAs) {
-        setIsUserTurn(true);
+        newIsUserTurn = true;
       } else {
-        setIsUserTurn(false);
+        newIsUserTurn = false;
       }
+      setIsUserTurn(newIsUserTurn);
+      
+      console.log("--- Puzzle Reset ---");
+      console.log("Original Puzzle Data:", JSON.stringify(puzzle));
+      console.log("FEN indicates turn for:", initialGameTurn === 'w' ? 'White' : 'Black');
+      console.log("Data source orientation:", puzzle.orientation);
+      console.log("Solution length:", numSolutionMoves);
+      console.log("Calculated effective user orientation:", effectiveOrientation);
+      console.log("User effectively plays as:", userPlaysAs === 'w' ? 'White' : 'Black');
+      console.log("isUserTurn set to:", newIsUserTurn);
+      console.log("--- End Reset Log ---");
     }
   };
 
@@ -355,7 +399,7 @@ export default function Home() {
                   <p className="font-semibold text-primary">Loading puzzle...</p>
                 ) : puzzle && chessInstance && isUserTurn ? (
                   <p className="font-semibold text-accent-foreground animate-pulse">
-                    {`Your turn (${puzzle.orientation}). Engine: ${chessInstance.turn() === 'w' ? 'White' : 'Black'} to move.`}
+                    {`Your turn (${boardOrientation}). Engine: ${chessInstance.turn() === 'w' ? 'White' : 'Black'} to move.`}
                   </p>
                 ) : puzzle && chessInstance ? (
                   <p className="font-semibold text-primary">
@@ -379,7 +423,10 @@ export default function Home() {
                 ) : (
                   <ol className="list-none list-inside space-y-1">
                     {moveHistory.map((move, index) => (
-                      <li key={index} className="text-sm">{move}</li>
+                      <li key={index} className="text-sm">
+                        {/* Logic for displaying move numbers already in makeAppMove/handleUserMove */}
+                        {move}
+                      </li>
                     ))}
                   </ol>
                 )}
