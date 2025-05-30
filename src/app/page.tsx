@@ -42,6 +42,9 @@ export default function Home() {
   }, []);
 
   const initializeNewPuzzle = useCallback((newPuzzle: Puzzle) => {
+    console.log("--- Initializing New Puzzle ---");
+    console.log("Received Puzzle Data:", JSON.stringify(newPuzzle));
+    
     const chess = new Chess(newPuzzle.fen);
     setPuzzle(newPuzzle);
     setCurrentFen(chess.fen());
@@ -57,11 +60,19 @@ export default function Home() {
     const initialGameTurn = chess.turn();
     const userPlaysAs = newPuzzle.orientation.charAt(0);
 
+    console.log("FEN indicates turn for:", initialGameTurn === 'w' ? 'White' : 'Black');
+    console.log("User plays as:", newPuzzle.orientation);
+    
+    let initialIsUserTurn;
     if (initialGameTurn === userPlaysAs) {
-      setIsUserTurn(true);
+      initialIsUserTurn = true;
     } else {
-      setIsUserTurn(false);
+      initialIsUserTurn = false;
     }
+    setIsUserTurn(initialIsUserTurn);
+    console.log("Initial isUserTurn set to:", initialIsUserTurn);
+    console.log("--- End Puzzle Initialization Log ---");
+
   }, []);
 
   const fetchNewPuzzle = useCallback(async () => {
@@ -71,7 +82,6 @@ export default function Home() {
       const newPuzzleData = await getPuzzleAction();
       initializeNewPuzzle(newPuzzleData);
     } catch (error) {
-      console.error("Original error fetching puzzle:", error);
       setIsLoading(false);
 
       let toastTitle = "Error Fetching Puzzle";
@@ -79,7 +89,9 @@ export default function Home() {
 
       if (error instanceof Error && error.message) {
         const lowerCaseErrorMessage = error.message.toLowerCase();
-        if (lowerCaseErrorMessage !== 'failed to fetch' && lowerCaseErrorMessage !== 'typeerror: failed to fetch') {
+         if (lowerCaseErrorMessage.includes("typeerror: failed to fetch") || lowerCaseErrorMessage.includes("failed to fetch")) {
+          toastDescription = "Network error. Failed to fetch puzzle. Please check your connection or try again later.";
+        } else {
           toastDescription = error.message;
         }
       }
@@ -91,6 +103,7 @@ export default function Home() {
           variant: "destructive",
         });
       } catch (toastError) {
+        // Fallback if toast itself fails
         console.error("Error displaying toast notification:", toastError);
         alert("Failed to fetch puzzle. An additional error occurred while trying to display the error message.");
       }
@@ -132,14 +145,14 @@ export default function Home() {
         setIsUserTurn(true);
       }
     } else {
-      console.error("Invalid app move in solution:", moveNotation, "FEN:", chessInstance.fen());
+      console.error("Invalid app move in solution:", moveNotation, "FEN:", chessInstance.fen(), "Current turn by FEN:", chessInstance.turn());
       toast({ 
         title: "Puzzle Error", 
         description: "The puzzle solution has an invalid move for the app. Please try a new puzzle.", 
         variant: "destructive" 
       });
-      setIsLoading(false); // Ensure loading is off if puzzle is broken
-      setIsUserTurn(true); // Give control to user to prevent app loop on broken puzzle
+      setIsUserTurn(true); // Give control back to user if app move is broken
+      setIsLoading(false);
     }
   }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle]);
 
