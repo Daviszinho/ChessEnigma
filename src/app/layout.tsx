@@ -28,14 +28,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <LocaleProvider>
-      <html lang="en" suppressHydrationWarning> {/* Default lang, LocaleContext will update client-side */}
-        {/* <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}> */}
-        <body className="antialiased"> {/* Temporarily remove font variables */}
+    <html lang="en" suppressHydrationWarning> {/* Default lang, LocaleContext will update client-side */}
+      {/* <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}> */}
+      <body className="antialiased"> {/* Temporarily remove font variables */}
+        <LocaleProvider>
           {children}
           <Toaster />
-        </body>
-      </html>
-    </LocaleProvider>
+        </LocaleProvider>
+      </body>
+    </html>
   );
 }
