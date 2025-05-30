@@ -1,8 +1,10 @@
+
 import type {Metadata} from 'next';
 import {Geist, Geist_Mono} from 'next/font/google';
 import './globals.css';
 // import 'react-chessboard/dist/index.css'; // Import react-chessboard CSS - Removed due to Module Not Found error
 import { Toaster } from "@/components/ui/toaster"; // Import Toaster
+import { LocaleProvider } from '@/context/LocaleContext';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,11 +27,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
-        <Toaster />
-      </body>
-    </html>
+    <LocaleProvider>
+      <html lang="en">
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          {children}
+          <Toaster />
+        </body>
+      </html>
+    </LocaleProvider>
   );
 }
