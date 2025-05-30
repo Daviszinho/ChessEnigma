@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getPuzzleAction, type Puzzle } from './actions';
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, RefreshCcw, Brain, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCcw, Brain, Loader2, Lightbulb } from 'lucide-react';
 
 export default function Home() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
@@ -27,6 +27,7 @@ export default function Home() {
   const [isPuzzleSolved, setIsPuzzleSolved] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
+  const [hintSquare, setHintSquare] = useState<Square | null>(null);
 
   const { toast } = useToast();
 
@@ -40,21 +41,22 @@ export default function Home() {
     setCurrentMoveIndex(0);
     setIsPuzzleSolved(false);
     setMoveHistory([]);
+    setHintSquare(null);
     setIsLoading(false);
 
     const initialGameTurn = chess.turn(); // 'w' or 'b'
     const userPlaysAs = newPuzzle.orientation.charAt(0); // 'w' or 'b'
 
-    // Determine if the user should make the first move of the solution
     if (initialGameTurn === userPlaysAs) {
-      setIsUserTurn(true); // User makes solutionMoves[0]
+      setIsUserTurn(true); 
     } else {
-      setIsUserTurn(false); // App makes solutionMoves[0]
+      setIsUserTurn(false); 
     }
   }, []);
 
   const fetchNewPuzzle = useCallback(async () => {
     setIsLoading(true);
+    setHintSquare(null);
     try {
       const newPuzzleData = await getPuzzleAction();
       initializeNewPuzzle(newPuzzleData);
@@ -81,6 +83,7 @@ export default function Home() {
     if (!chessInstance || !solutionMoves.length || currentMoveIndex >= solutionMoves.length || isUserTurn || isPuzzleSolved || !puzzle) {
       return;
     }
+    setHintSquare(null);
     
     const moveNotation = solutionMoves[currentMoveIndex];
     const moveResult = chessInstance.move(moveNotation, { sloppy: true });
@@ -109,35 +112,31 @@ export default function Home() {
   }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle]);
 
   useEffect(() => {
-    // App makes a move if it's not the user's turn, puzzle is active, and there are moves left.
     if (puzzle && chessInstance && !isLoading && !isPuzzleSolved && !isUserTurn && currentMoveIndex < solutionMoves.length) {
         const timer = setTimeout(() => {
           makeAppMove();
-        }, 500); // Delay for "thinking"
+        }, 500); 
         return () => clearTimeout(timer);
     }
   }, [puzzle, chessInstance, isLoading, isPuzzleSolved, isUserTurn, currentMoveIndex, solutionMoves, makeAppMove]);
 
 
   const handleUserMove = (sourceSquare: Square, targetSquare: Square, piece: Piece): boolean => {
+    setHintSquare(null);
     if (!chessInstance || !isUserTurn || isPuzzleSolved || currentMoveIndex >= solutionMoves.length || !puzzle) {
       return false;
     }
 
-    // Check if the user is moving their designated piece color
     const userPlaysAsColor = puzzle.orientation.charAt(0);
     if (piece.charAt(0).toLowerCase() !== userPlaysAsColor) {
         toast({ title: "Not Your Piece", description: `You are playing as ${puzzle.orientation}. You can only move ${puzzle.orientation} pieces.`, variant: "destructive"});
         return false;
     }
     
-    // Also check if it's actually that color's turn in the game engine
     if (chessInstance.turn() !== userPlaysAsColor) {
         toast({ title: "Not Your Turn", description: `It's ${chessInstance.turn() === 'w' ? 'White' : 'Black'}'s turn according to the board.`, variant: "destructive"});
-        // This situation ideally shouldn't be reached if isUserTurn is managed correctly
         return false;
     }
-
 
     const attemptedMoveUci = `${sourceSquare}${targetSquare}`;
     let promotionChar = '';
@@ -172,13 +171,13 @@ export default function Home() {
           action: <CheckCircle className="text-green-500" />,
         });
       } else {
-        setIsUserTurn(false); // App's turn now
+        setIsUserTurn(false); 
       }
       return true; 
     } else {
       toast({ title: "Incorrect Move", description: `Expected the solution move, but you played ${moveResult.san}. Try again.`, variant: "destructive", action: <XCircle className="text-red-500" /> });
       chessInstance.undo(); 
-      setCurrentFen(chessInstance.fen()); // Reflect the undone move on the board
+      setCurrentFen(chessInstance.fen()); 
       return false; 
     }
   };
@@ -189,10 +188,10 @@ export default function Home() {
       setCurrentFen(chess.fen());
       setBoardOrientation(puzzle.orientation);
       setChessInstance(chess);
-      // solutionMoves is already set from the current puzzle
       setCurrentMoveIndex(0);
       setIsPuzzleSolved(false);
       setMoveHistory([]);
+      setHintSquare(null);
       setIsLoading(false); 
       toast({ title: "Puzzle Reset", description: "The current puzzle has been reset." });
 
@@ -201,9 +200,29 @@ export default function Home() {
       if (initialGameTurn === userPlaysAs) {
         setIsUserTurn(true);
       } else {
-        setIsUserTurn(false); // App will make the first move via useEffect
+        setIsUserTurn(false); 
       }
     }
+  };
+
+  const handleShowHint = () => {
+    if (!puzzle || !chessInstance || !isUserTurn || isPuzzleSolved) {
+      toast({ title: "Hint Unavailable", description: "Cannot show hint at this time.", variant: "default" });
+      return;
+    }
+    if (currentMoveIndex >= solutionMoves.length || !solutionMoves[currentMoveIndex]) {
+      toast({ title: "Hint Error", description: "No more moves in the solution for a hint.", variant: "destructive" });
+      return;
+    }
+
+    const nextMoveUci = solutionMoves[currentMoveIndex];
+    if (nextMoveUci.length < 2) {
+      toast({ title: "Hint Error", description: "Invalid solution move format for hint.", variant: "destructive" });
+      return;
+    }
+    const sourceSq = nextMoveUci.substring(0, 2) as Square;
+    setHintSquare(sourceSq);
+    toast({ title: "Hint Activated", description: `The piece on ${sourceSq} is highlighted.`, duration: 3000 });
   };
   
   const boardWrapperStyle: CSSProperties = {
@@ -239,6 +258,7 @@ export default function Home() {
                 arePiecesDraggable={isUserTurn && !isPuzzleSolved && !isLoading}
                 customDarkSquareStyle={{ backgroundColor: 'hsl(var(--primary) / 0.8)'}}
                 customLightSquareStyle={{ backgroundColor: 'hsl(var(--background))'}}
+                hintSquare={hintSquare}
               />
             )}
           </CardContent>
@@ -249,13 +269,17 @@ export default function Home() {
             <CardHeader>
               <CardTitle className="text-2xl text-primary">Controls & Status</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <Button onClick={fetchNewPuzzle} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
                 New Puzzle
               </Button>
               <Button onClick={handleResetPuzzle} variant="outline" className="w-full" disabled={isLoading || !puzzle}>
                 Reset Current Puzzle
+              </Button>
+              <Button onClick={handleShowHint} variant="outline" className="w-full" disabled={isLoading || !puzzle || !isUserTurn || isPuzzleSolved}>
+                <Lightbulb className="mr-2 h-4 w-4" />
+                Show Hint
               </Button>
               <div className="p-3 bg-muted rounded-md text-center">
                 {isPuzzleSolved ? (
@@ -301,4 +325,3 @@ export default function Home() {
     </div>
   );
 }
-

@@ -17,6 +17,7 @@ interface ChessboardClientProps {
   customBoardStyle?: CSSProperties;
   customDarkSquareStyle?: CSSProperties;
   customLightSquareStyle?: CSSProperties;
+  hintSquare?: Square | null;
 }
 
 export default function ChessboardClient({
@@ -28,9 +29,22 @@ export default function ChessboardClient({
   customBoardStyle = {},
   customDarkSquareStyle = { backgroundColor: "hsl(var(--primary) / 0.6)" },
   customLightSquareStyle = { backgroundColor: "hsl(var(--background))" },
+  hintSquare = null,
 }: ChessboardClientProps) {
   const isMobile = useIsMobile();
   const dynamicBoardWidth = boardWidth || (isMobile ? 300 : 400);
+
+  const getCustomSquareStyles = () => {
+    const styles: { [square: string]: CSSProperties } = {};
+    if (hintSquare) {
+      // Using HSL variables from globals.css for consistency
+      // The accent color is orange by default. We add transparency.
+      styles[hintSquare] = {
+        backgroundColor: 'hsla(var(--accent), 0.5)', // 50% opacity for accent color
+      };
+    }
+    return styles;
+  };
 
   return (
     <div style={{ width: dynamicBoardWidth, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', borderRadius: 'var(--radius)' }}>
@@ -47,6 +61,7 @@ export default function ChessboardClient({
         }}
         customDarkSquareStyle={customDarkSquareStyle}
         customLightSquareStyle={customLightSquareStyle}
+        customSquareStyles={getCustomSquareStyles()}
         customPieces={{}} 
         animationDuration={200}
         dropOffBoard="snapback" 
