@@ -399,11 +399,11 @@ export default function Home() {
                   <p className="font-semibold text-primary">Loading puzzle...</p>
                 ) : puzzle && chessInstance && isUserTurn ? (
                   <p className="font-semibold text-accent-foreground animate-pulse">
-                    {`Your turn (${boardOrientation}). Engine: ${chessInstance.turn() === 'w' ? 'White' : 'Black'} to move.`}
+                    {`Your turn (${boardOrientation}).`}
                   </p>
                 ) : puzzle && chessInstance ? (
                   <p className="font-semibold text-primary">
-                    {`App is thinking... (${chessInstance.turn() === 'w' ? 'White' : 'Black'} to move)`}
+                    App is thinking...
                   </p>
                 ): (
                    <p className="font-semibold text-primary">App is thinking...</p>
