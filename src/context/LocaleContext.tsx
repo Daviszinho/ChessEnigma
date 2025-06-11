@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 
-type Locale = 'en' | 'es' | 'pt';
+type Locale = 'en' | 'es' | 'pt' | 'de';
 type Translations = Record<string, string>;
 
 interface LocaleContextType {
@@ -17,7 +17,7 @@ interface LocaleContextType {
 export const LocaleContext = createContext<LocaleContextType | undefined>(undefined);
 
 const defaultLocale: Locale = 'es';
-const supportedLocales: Locale[] = ['en', 'es', 'pt'];
+const supportedLocales: Locale[] = ['en', 'es', 'pt', 'de'];
 
 interface LocaleProviderProps {
   children: ReactNode;
@@ -35,8 +35,15 @@ export const LocaleProvider: React.FC<LocaleProviderProps> = ({ children }) => {
       console.error(`Could not load translations for locale: ${loc}`, error);
       // Fallback to default locale if specific one fails
       if (loc !== defaultLocale) {
-        const fallbackModule = await import(`@/locales/${defaultLocale}.json`);
-        setTranslations(fallbackModule.default || fallbackModule);
+        try {
+            const fallbackModule = await import(`@/locales/${defaultLocale}.json`);
+            setTranslations(fallbackModule.default || fallbackModule);
+        } catch (fallbackError) {
+            console.error(`Could not load fallback translations for locale: ${defaultLocale}`, fallbackError);
+            setTranslations({}); // Set to empty if fallback also fails
+        }
+      } else {
+        setTranslations({}); // Set to empty if default fails
       }
     }
   }, []);

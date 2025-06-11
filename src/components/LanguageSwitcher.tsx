@@ -4,9 +4,9 @@
 import React from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from '@/components/ui/label'; // Assuming you have a Label component
+import { Label } from '@/components/ui/label';
 
-type Locale = 'en' | 'es' | 'pt';
+type Locale = 'en' | 'es' | 'pt' | 'de';
 
 export const LanguageSwitcher: React.FC = () => {
   const { locale, setLocale, t } = useTranslation();
@@ -28,6 +28,7 @@ export const LanguageSwitcher: React.FC = () => {
           <SelectItem value="en">{t('languageEnglish')}</SelectItem>
           <SelectItem value="es">{t('languageSpanish')}</SelectItem>
           <SelectItem value="pt">{t('languagePortuguese')}</SelectItem>
+          <SelectItem value="de">{t('languageGerman')}</SelectItem>
         </SelectContent>
       </Select>
     </div>
