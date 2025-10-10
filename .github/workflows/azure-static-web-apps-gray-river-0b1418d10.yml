@@ -33,8 +33,8 @@ jobs:
           action: "upload"
           # App configuration
           app_location: "/" # Root directory of the application
-          api_location: "" # API routes are handled by Next.js
-          output_location: "" # Let Azure Static Web Apps auto-detect Next.js output
+          api_location: "api" # Azure Functions API directory
+          output_location: "out" # Next.js static export output directory
           # Build configuration
           app_build_command: "npm run build" # Let Azure build the app
           skip_app_build: false # Let Azure handle the build
