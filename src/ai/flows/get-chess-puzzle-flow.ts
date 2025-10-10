@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview Flow for fetching chess puzzles from BigQuery.
+ * @fileOverview Flow for fetching chess puzzles from Oracle Cloud.
  *
  * - getChessPuzzle - A function that retrieves a chess puzzle.
  * - ChessPuzzleOutput - The return type for the getChessPuzzle function.
@@ -9,7 +9,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {BigQuery} from '@google-cloud/bigquery';
 
 const ChessPuzzleOutputSchema = z.object({
   fen: z.string().describe('The Forsyth-Edwards Notation (FEN) of the chess puzzle starting position.'),
@@ -18,54 +17,67 @@ const ChessPuzzleOutputSchema = z.object({
 });
 export type ChessPuzzleOutput = z.infer<typeof ChessPuzzleOutputSchema>;
 
-// Define the BigQuery details
-const projectId = 'idyllic-parser-460423-r0'; // Your Google Cloud project ID
-const datasetId = 'matechessproblems';      // Your BigQuery dataset ID
-const routineId = 'getPuzzle';              // Your BigQuery stored procedure name
+// Define the Oracle Cloud endpoint
+const ORACLE_PUZZLE_URL = 'https://g2611a32d6a01f3-oraclelearning.adb.mx-queretaro-1.oraclecloudapps.com/ords/admin/v_puzzle_mate_random_row/';
 
-const fetchChessPuzzleFromBigQueryTool = ai.defineTool(
+const fetchChessPuzzleFromOracleTool = ai.defineTool(
   {
-    name: 'fetchChessPuzzleFromBigQuery',
-    description: 'Fetches a chess puzzle (FEN, solution, orientation) from a BigQuery stored procedure.',
+    name: 'fetchChessPuzzleFromOracle',
+    description: 'Fetches a chess puzzle (FEN, solution, orientation) from Oracle Cloud REST API.',
     inputSchema: z.object({}), // No input parameters for fetching a random puzzle
     outputSchema: ChessPuzzleOutputSchema,
   },
   async () => {
-    const bigquery = new BigQuery({projectId});
-    const query = `CALL \`${projectId}.${datasetId}.${routineId}\`();`;
-
     try {
-      const [rows] = await bigquery.query(query);
-      if (rows && rows.length > 0) {
-        const puzzleData = rows[0]; // Assuming the procedure returns one row with the puzzle
-        
-        // Validate and return the data
-        // The procedure must return columns named 'fen', 'solution', and 'orientation'
-        // that match the ChessPuzzleOutputSchema.
-        const parsedOutput = ChessPuzzleOutputSchema.parse({
-          fen: puzzleData.fen,
-          solution: puzzleData.solution,
-          orientation: puzzleData.orientation?.toLowerCase() === 'black' ? 'black' : 'white',
-        });
-        return parsedOutput;
+      const response = await fetch(ORACLE_PUZZLE_URL, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
 
-      } else {
-        throw new Error('BigQuery stored procedure did not return any puzzle data.');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const data = await response.json();
+      
+      // Handle Oracle REST API response format
+      // The response has the format: {"items": [{"fen": "...", "moves": "...", ...}], ...}
+      let puzzleData;
+      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        puzzleData = data.items[0];
+      } else if (Array.isArray(data) && data.length > 0) {
+        puzzleData = data[0];
+      } else if (data.fen) {
+        puzzleData = data;
+      } else {
+        throw new Error('Oracle API did not return puzzle data in expected format.');
+      }
+
+      // Map Oracle API fields to our expected format
+      // Oracle uses "moves" instead of "solution"
+      const solution = puzzleData.moves || puzzleData.solution;
+      const orientation = puzzleData.fen?.includes(' b ') ? 'black' : 'white';
+
+      // Validate and return the data
+      const parsedOutput = ChessPuzzleOutputSchema.parse({
+        fen: puzzleData.fen,
+        solution: solution,
+        orientation: orientation,
+      });
+      
+      return parsedOutput;
+
     } catch (error) {
-      console.error('Error fetching puzzle from BigQuery:', error);
+      console.error('Error fetching puzzle from Oracle Cloud:', error);
       let detailedMessage = 'An unknown error occurred';
       if (error instanceof Error) {
         detailedMessage = error.message;
       }
 
-      // Provide a more specific message if it seems like an auth/permission issue.
-      if (typeof detailedMessage === 'string' && (detailedMessage.toLowerCase().includes('access token') || detailedMessage.includes('status code 500') || detailedMessage.toLowerCase().includes('credential') || detailedMessage.toLowerCase().includes('permission denied'))) {
-        throw new Error(`Failed to fetch puzzle from BigQuery due to an authentication or permission issue: ${detailedMessage}. Please check your Google Cloud project credentials (e.g., Application Default Credentials, GOOGLE_APPLICATION_CREDENTIALS environment variable) and ensure the necessary BigQuery IAM permissions are granted.`);
-      } else if (error instanceof Error) {
-        throw new Error(`Failed to fetch puzzle from BigQuery: ${detailedMessage}`);
-      }
-      throw new Error('An unknown error occurred while fetching puzzle from BigQuery.');
+      throw new Error(`Failed to fetch puzzle from Oracle Cloud: ${detailedMessage}`);
     }
   }
 );
@@ -79,9 +91,9 @@ const getChessPuzzleFlow = ai.defineFlow(
   async () => {
     // A tool function defined with ai.defineTool, when called directly,
     // returns its output directly (matching its outputSchema).
-    // The fetchChessPuzzleFromBigQueryTool is designed to throw an error
-    // if BigQuery doesn't return data or if parsing fails, so no explicit null check is needed here.
-    const puzzleData = await fetchChessPuzzleFromBigQueryTool({});
+    // The fetchChessPuzzleFromOracleTool is designed to throw an error
+    // if Oracle Cloud doesn't return data or if parsing fails, so no explicit null check is needed here.
+    const puzzleData = await fetchChessPuzzleFromOracleTool({});
     return puzzleData;
   }
 );
