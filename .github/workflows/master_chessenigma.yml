@@ -49,7 +49,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'ChessEnigma'
+          app-name: 'chessenigma-dqduhka2atfxhxgn'
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_65CB93D5EB884DC482726DB65DAA3E0C }}
