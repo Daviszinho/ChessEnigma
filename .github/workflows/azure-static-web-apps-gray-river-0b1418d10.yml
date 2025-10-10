@@ -24,20 +24,6 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Next.js application
-        run: npm run build
-        env:
-          NODE_ENV: production
-
       - name: Build And Deploy to Azure Static Web Apps
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -50,7 +36,8 @@ jobs:
           api_location: "" # No API for static export
           output_location: "out" # Next.js static export output directory
           # Build configuration
-          skip_app_build: true # We already built the app above
+          app_build_command: "npm run build" # Let Azure build the app
+          skip_app_build: false # Let Azure handle the build
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
