@@ -36,15 +36,15 @@ interface RootLayoutProps {
 // Inner component to access locale context for html lang attribute
 function HtmlLangUpdater({ children }: { children: ReactNode }) {
   const localeContext = useContext(LocaleContext);
-  
+
   // Default to 'es' if context is not yet available or locale is undefined
-  const currentLang = localeContext?.locale || 'es'; 
+  const currentLang = localeContext?.locale || 'es';
 
   useEffect(() => {
     if (localeContext?.translations?.appName) {
       document.title = localeContext.t('appName');
     }
-     if (localeContext?.translations?.appDescription) {
+    if (localeContext?.translations?.appDescription) {
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
         metaDescription.setAttribute('content', localeContext.t('appDescription'));
@@ -60,18 +60,22 @@ function HtmlLangUpdater({ children }: { children: ReactNode }) {
 
   return (
     <html lang={currentLang} suppressHydrationWarning>
-       <head>
+      <head>
         {/* Keep existing head elements or Next.js will manage them */}
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#09090b" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
         {/* Initial title and description, can be updated by useEffect */}
         <title>ChessEnigma</title>
         <meta name="description" content="Solve chess puzzles and sharpen your mind." />
       </head>
       {/* Temporarily remove font variables, original: className={`${geistSans.variable} ${geistMono.variable} antialiased`} */}
       <body className="antialiased">
-          {children}
-          <Toaster />
+        {children}
+        <Toaster />
       </body>
     </html>
   );
