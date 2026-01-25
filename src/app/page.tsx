@@ -14,9 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getPuzzleAction, type Puzzle } from './actions';
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, RefreshCcw, Brain, Loader2, Lightbulb } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCcw, Brain, Loader2, Lightbulb, Download } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 
 const getEffectiveOrientation = (
@@ -43,6 +44,7 @@ const getEffectiveOrientation = (
 
 export default function Home() {
   const { t, locale } = useTranslation();
+  const { isInstallable, isInstalled, installApp } = usePWAInstall();
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [currentFen, setCurrentFen] = useState<string>("start");
   const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white');
@@ -351,6 +353,17 @@ export default function Home() {
     toast({ title: t('toastHintActivatedTitle'), description: t('toastHintActivatedDescription', { square: sourceSq }), duration: 3000 });
   };
 
+  const handleInstallApp = async () => {
+    const installed = await installApp();
+    if (installed) {
+      toast({
+        title: "Installation Successful",
+        description: "ChessEnigma has been installed on your device!",
+        action: <CheckCircle className="text-green-500" />,
+      });
+    }
+  };
+
   const boardWrapperStyle: CSSProperties = {
     display: 'flex',
     justifyContent: 'center',
@@ -432,6 +445,24 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
+
+          {isInstallable && (
+            <Card className="shadow-lg">
+              <CardContent className="p-4">
+                <Button 
+                  onClick={handleInstallApp} 
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                  size="lg"
+                >
+                  <Download className="mr-2 h-5 w-5" />
+                  Install ChessEnigma
+                </Button>
+                <p className="text-sm text-muted-foreground mt-2 text-center">
+                  Install the app for offline access and a better experience
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="shadow-lg">
             <CardHeader>
