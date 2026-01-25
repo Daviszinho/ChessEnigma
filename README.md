@@ -94,8 +94,7 @@ npm run build
 npm start
 ```
 
-### Variables de Entorno Requeridas
-- `GOOGLE_GENAI_API_KEY`: Para generación de puzzles con IA
+
 
 **Nota**: La conexión a Oracle Database está configurada directamente en el endpoint REST API, no requiere variables de entorno adicionales.
 
