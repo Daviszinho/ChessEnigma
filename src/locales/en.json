@@ -46,6 +46,8 @@
   "toastHintErrorInvalidFormat": "Invalid solution move format for hint.",
   "toastHintActivatedTitle": "Hint Activated",
   "toastHintActivatedDescription": "The piece on {square} is highlighted.",
+  "installButton": "Install ChessEnigma",
+  "installDescription": "Install the app for better experience",
   "orientationWhite": "White",
   "orientationBlack": "Black",
   "languageEnglish": "English",

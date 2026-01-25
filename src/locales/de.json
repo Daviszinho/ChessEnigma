@@ -46,6 +46,8 @@
   "toastHintErrorInvalidFormat": "Ungültiges Lösungszugformat für Hinweis.",
   "toastHintActivatedTitle": "Hinweis aktiviert",
   "toastHintActivatedDescription": "Die Figur auf {square} ist hervorgehoben.",
+  "installButton": "ChessEnigma installieren",
+  "installDescription": "Installieren Sie die App für eine bessere Erfahrung",
   "orientationWhite": "Weiß",
   "orientationBlack": "Schwarz",
   "languageEnglish": "Englisch",

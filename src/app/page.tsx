@@ -455,10 +455,10 @@ export default function Home() {
                   size="lg"
                 >
                   <Download className="mr-2 h-5 w-5" />
-                  Install ChessEnigma
+                  {t('installButton')}
                 </Button>
                 <p className="text-sm text-muted-foreground mt-2 text-center">
-                  Install the app for offline access and a better experience
+                  {t('installDescription')}
                 </p>
               </CardContent>
             </Card>

@@ -46,6 +46,8 @@
   "toastHintErrorInvalidFormat": "Formato de movimiento de solución inválido para la pista.",
   "toastHintActivatedTitle": "Pista Activada",
   "toastHintActivatedDescription": "La pieza en {square} está resaltada.",
+  "installButton": "Instalar ChessEnigma",
+  "installDescription": "Instala la aplicación para una mejor experiencia",
   "orientationWhite": "Blancas",
   "orientationBlack": "Negras",
   "languageEnglish": "Inglés",

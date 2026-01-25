@@ -46,6 +46,8 @@
   "toastHintErrorInvalidFormat": "Formato de movimento da solução inválido para a dica.",
   "toastHintActivatedTitle": "Dica Ativada",
   "toastHintActivatedDescription": "A peça em {square} está destacada.",
+  "installButton": "Instalar ChessEnigma",
+  "installDescription": "Instale o aplicativo para uma melhor experiência",
   "orientationWhite": "Brancas",
   "orientationBlack": "Pretas",
   "languageEnglish": "Inglês",
