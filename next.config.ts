@@ -26,6 +26,28 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    // Fix for handlebars in Genkit/Azure deployment
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'handlebars': 'commonjs handlebars',
+        '@opentelemetry/exporter-jaeger': 'commonjs @opentelemetry/exporter-jaeger',
+      });
+    }
+
+    // Ignore warnings about optional dependencies
+    config.ignoreWarnings = [
+      {
+        module: /node_modules\/handlebars/,
+      },
+      {
+        module: /node_modules\/@opentelemetry/,
+      },
+    ];
+
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);
