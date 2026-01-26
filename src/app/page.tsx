@@ -383,9 +383,7 @@ export default function Home() {
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">{t('headerSubtitle')}</p>
         </div>
-        <div className="flex-1 flex justify-end">
-          <LanguageSwitcher />
-        </div>
+        <div className="flex-1"></div>
       </header>
 
       <main className="flex flex-col lg:flex-row gap-6 items-start w-full max-w-6xl">
@@ -487,13 +485,18 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="mt-auto pt-10 pb-4 text-center text-sm text-muted-foreground">
-        <p>
-          {currentYear !== null
-            ? t('footerCopyright', { year: currentYear })
-            : t('footerCopyrightNoYear')}
-        </p>
-        <p>{t('footerPoweredBy')}</p>
+      <footer className="mt-auto pt-10 pb-8 w-full max-w-6xl flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-muted-foreground px-4">
+        <div className="text-center md:text-left">
+          <p>
+            {currentYear !== null
+              ? t('footerCopyright', { year: currentYear })
+              : t('footerCopyrightNoYear')}
+          </p>
+          <p>{t('footerPoweredBy')}</p>
+        </div>
+        <div className="flex items-center bg-muted/30 p-2 rounded-lg border border-border/50">
+          <LanguageSwitcher />
+        </div>
       </footer>
     </div>
   );
