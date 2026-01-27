@@ -1,4 +1,3 @@
-
 {
   "appName": "ChessEnigma",
   "appDescription": "Resolva quebra-cabeças de xadrez e aguce sua mente.",
@@ -36,7 +35,7 @@
   "toastCorrectMoveTitle": "Movimento Correto!",
   "toastCorrectMoveDescription": "Você jogou {san}.",
   "toastIncorrectMoveTitle": "Movimento Incorreto",
-  "toastIncorrectMoveDescription": "Esperava-se o movimento da solução, mas você jogou {san}. Tente novamente.",
+  "toastIncorrectMoveDescription": "Tente novamente.",
   "toastPuzzleResetTitle": "Quebra-cabeça Reiniciado",
   "toastPuzzleResetDescription": "O quebra-cabeça atual foi reiniciado.",
   "toastHintUnavailableTitle": "Dica Indisponível",

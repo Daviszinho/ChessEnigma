@@ -1,4 +1,3 @@
-
 {
   "appName": "ChessEnigma",
   "appDescription": "Resuelve acertijos de ajedrez y agudiza tu mente.",
@@ -36,7 +35,7 @@
   "toastCorrectMoveTitle": "¡Movimiento Correcto!",
   "toastCorrectMoveDescription": "Jugaste {san}.",
   "toastIncorrectMoveTitle": "Movimiento Incorrecto",
-  "toastIncorrectMoveDescription": "Se esperaba el movimiento de la solución, pero jugaste {san}. Intenta de nuevo.",
+  "toastIncorrectMoveDescription": "Inténtalo de nuevo.",
   "toastPuzzleResetTitle": "Acertijo Reiniciado",
   "toastPuzzleResetDescription": "El acertijo actual ha sido reiniciado.",
   "toastHintUnavailableTitle": "Pista No Disponible",

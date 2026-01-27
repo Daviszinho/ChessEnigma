@@ -1,4 +1,3 @@
-
 {
   "appName": "ChessEnigma",
   "appDescription": "Solve chess puzzles and sharpen your mind.",
@@ -36,7 +35,7 @@
   "toastCorrectMoveTitle": "Correct Move!",
   "toastCorrectMoveDescription": "You played {san}.",
   "toastIncorrectMoveTitle": "Incorrect Move",
-  "toastIncorrectMoveDescription": "Expected the solution move, but you played {san}. Try again.",
+  "toastIncorrectMoveDescription": "Please try again.",
   "toastPuzzleResetTitle": "Puzzle Reset",
   "toastPuzzleResetDescription": "The current puzzle has been reset.",
   "toastHintUnavailableTitle": "Hint Unavailable",

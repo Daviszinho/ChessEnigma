@@ -1,4 +1,3 @@
-
 {
   "appName": "ChessEnigma",
   "appDescription": "Löse Schachpuzzles und schärfe deinen Verstand.",
@@ -36,7 +35,7 @@
   "toastCorrectMoveTitle": "Korrekter Zug!",
   "toastCorrectMoveDescription": "Du hast {san} gespielt.",
   "toastIncorrectMoveTitle": "Falscher Zug",
-  "toastIncorrectMoveDescription": "Erwarteter Lösungsszug, aber du hast {san} gespielt. Versuche es erneut.",
+  "toastIncorrectMoveDescription": "Bitte versuche es erneut.",
   "toastPuzzleResetTitle": "Puzzle zurückgesetzt",
   "toastPuzzleResetDescription": "Das aktuelle Puzzle wurde zurückgesetzt.",
   "toastHintUnavailableTitle": "Hinweis nicht verfügbar",

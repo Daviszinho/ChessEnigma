@@ -293,7 +293,7 @@ export default function Home() {
     } else {
       toast({
         title: t('toastIncorrectMoveTitle'),
-        description: t('toastIncorrectMoveDescription', { san: moveResult.san }),
+        description: t('toastIncorrectMoveDescription'),
         variant: "destructive",
         action: <XCircle className="text-red-500" />
       });
