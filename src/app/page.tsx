@@ -163,7 +163,12 @@ export default function Home() {
     setHintSquare(null);
 
     const moveNotation = solutionMoves[currentMoveIndex];
-    const moveResult = chessInstance.move(moveNotation, { sloppy: true });
+    let moveResult;
+    try {
+      moveResult = chessInstance.move(moveNotation, { sloppy: true });
+    } catch (e) {
+      moveResult = null;
+    }
 
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
@@ -244,7 +249,12 @@ export default function Home() {
     }
 
     const expectedMoveUciWithOptionalPromotion = solutionMoves[currentMoveIndex];
-    const moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
+    let moveResult;
+    try {
+      moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
+    } catch (e) {
+      moveResult = null;
+    }
 
     if (!moveResult) {
       toast({ title: t('toastIllegalMoveTitle'), description: t('toastIllegalMoveDescription'), variant: "destructive", action: <XCircle className="text-red-500" /> });
@@ -447,8 +457,8 @@ export default function Home() {
           {isInstallable && (
             <Card className="shadow-lg">
               <CardContent className="p-4">
-                <Button 
-                  onClick={handleInstallApp} 
+                <Button
+                  onClick={handleInstallApp}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   size="lg"
                 >
