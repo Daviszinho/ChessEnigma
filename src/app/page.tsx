@@ -73,8 +73,65 @@ export default function Home() {
   const [hintSquare, setHintSquare] = useState<Square | null>(null);
   const [currentYear, setCurrentYear] = useState<number | null>(null);
   const [initialTurn, setInitialTurn] = useState<'w' | 'b'>('w');
+  const audioContextRef = useRef<any>(null);
 
   const { toast } = useToast();
+
+  const playMoveSound = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextClass();
+    }
+
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const now = ctx.currentTime;
+    // Low transient to simulate piece impact.
+    const impactOsc = ctx.createOscillator();
+    const impactGain = ctx.createGain();
+    impactOsc.type = 'triangle';
+    impactOsc.frequency.setValueAtTime(260, now);
+    impactOsc.frequency.exponentialRampToValueAtTime(120, now + 0.05);
+    impactGain.gain.setValueAtTime(0.0001, now);
+    impactGain.gain.exponentialRampToValueAtTime(0.16, now + 0.005);
+    impactGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+    impactOsc.connect(impactGain);
+    impactGain.connect(ctx.destination);
+    impactOsc.start(now);
+    impactOsc.stop(now + 0.08);
+
+    // Short filtered noise for the "wood clack" texture.
+    const noiseDuration = 0.055;
+    const noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * noiseDuration), ctx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i += 1) {
+      noiseData[i] = (Math.random() * 2 - 1) * (1 - i / noiseData.length);
+    }
+
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(1600, now);
+    bandpass.Q.setValueAtTime(1.2, now);
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.0001, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.13, now + 0.003);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseDuration);
+
+    noiseSource.connect(bandpass);
+    bandpass.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noiseSource.start(now);
+    noiseSource.stop(now + noiseDuration);
+  }, []);
 
   useEffect(() => {
     if (t && t('pageTitle')) { // Check if t and specific key exists
@@ -173,6 +230,14 @@ export default function Home() {
     }
   }, [fetchNewPuzzle]);
 
+  useEffect(() => {
+    return () => {
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+      }
+    };
+  }, []);
+
   const makeAppMove = useCallback(() => {
     if (!chessInstance || !solutionMoves.length || currentMoveIndex >= solutionMoves.length || isUserTurn || isPuzzleSolved || !puzzle) {
       return;
@@ -189,6 +254,7 @@ export default function Home() {
 
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
+      playMoveSound();
       const { rowNumber, column } = getMoveDisplayPosition(currentMoveIndex, initialTurn);
       
       // Build move pairs for table display
@@ -232,7 +298,7 @@ export default function Home() {
       setIsUserTurn(true);
       setIsLoading(false);
     }
-  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle, moveHistory, t]);
+  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle, moveHistory, t, initialTurn, playMoveSound]);
 
   useEffect(() => {
     if (puzzle && chessInstance && !isLoading && !isPuzzleSolved && !isUserTurn && currentMoveIndex < solutionMoves.length) {
@@ -296,6 +362,7 @@ export default function Home() {
     if (madeMoveUci.toLowerCase() === expectedMoveUciWithOptionalPromotion.toLowerCase()) {
       toast({ title: t('toastCorrectMoveTitle'), description: t('toastCorrectMoveDescription', { san: moveResult.san }), action: <CheckCircle className="text-green-500" /> });
       setCurrentFen(chessInstance.fen());
+      playMoveSound();
 
       const { rowNumber, column } = getMoveDisplayPosition(currentMoveIndex, initialTurn);
       
