@@ -31,13 +31,22 @@ jobs:
 
       - name: Zip artifact for deployment
         run: |
-          zip -r node-app.zip . -x "node_modules/*" -x ".git/*" -x ".github/*" -x "*.md"
+          zip -r node-app.zip . \
+            -x "node_modules/*" \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x ".next/*" \
+            -x "out/*" \
+            -x "coverage/*" \
+            -x "*.log" \
+            -x "*.md"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
           path: node-app.zip
+          retention-days: 3
 
   deploy:
     runs-on: ubuntu-latest
