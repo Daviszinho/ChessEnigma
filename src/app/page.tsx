@@ -12,6 +12,7 @@ import ChessboardClient from '@/components/ChessboardClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getPuzzleAction, type Puzzle } from './actions';
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, RefreshCcw, Brain, Loader2, Lightbulb, Download } from 'lucide-react';
@@ -29,16 +30,30 @@ const getEffectiveOrientation = (
   if (isSolutionEven) {
     return fenTurn === 'w' ? 'black' : 'white';
   }
-  // If solution length is odd, the FEN turn player is the one making the last move of the solution.
-  // If FEN is 'w' and solution is odd, White makes the last move. User should play as White.
-  // If FEN is 'b' and solution is odd, Black makes the last move. User should play as Black.
-  return fenTurn; // Default to FEN turn if odd, or use providedOrientation if it has a specific meaning.
-  // For this heuristic, we primarily care about making the user the player who *starts* the puzzle's significant sequence if the solution is short and they are the one to make the *first* key move.
-  // If the puzzle data's `providedOrientation` is consistently set to the *solver's* side, we can use that.
-  // The current heuristic is: if solution is even, flip the FEN turn. Otherwise, use FEN turn.
-  // This is a simplification. A more robust approach might involve better `orientation` data from the source.
-  // Let's refine to: if even, flip FEN. If odd, use the *FEN's turn directly* as the player perspective.
-  // return fenTurn === 'w' ? 'white' : 'black'; // simpler: if solution is odd, user plays as the FEN turn player.
+  return fenTurn;
+};
+
+interface MovePair {
+  moveNumber: number;
+  whiteMove: string | null;
+  blackMove: string | null;
+}
+
+const getMoveDisplayPosition = (
+  moveIndex: number,
+  initialTurn: 'w' | 'b'
+): { rowNumber: number; column: 'white' | 'black' } => {
+  if (initialTurn === 'w') {
+    return {
+      rowNumber: Math.floor(moveIndex / 2) + 1,
+      column: moveIndex % 2 === 0 ? 'white' : 'black',
+    };
+  }
+
+  return {
+    rowNumber: Math.floor((moveIndex + 1) / 2) + 1,
+    column: moveIndex % 2 === 0 ? 'black' : 'white',
+  };
 };
 
 
@@ -54,9 +69,10 @@ export default function Home() {
   const [isUserTurn, setIsUserTurn] = useState<boolean>(false);
   const [isPuzzleSolved, setIsPuzzleSolved] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [moveHistory, setMoveHistory] = useState<string[]>([]);
+  const [moveHistory, setMoveHistory] = useState<MovePair[]>([]);
   const [hintSquare, setHintSquare] = useState<Square | null>(null);
   const [currentYear, setCurrentYear] = useState<number | null>(null);
+  const [initialTurn, setInitialTurn] = useState<'w' | 'b'>('w');
 
   const { toast } = useToast();
 
@@ -92,6 +108,7 @@ export default function Home() {
     setMoveHistory([]);
     setHintSquare(null);
     setIsLoading(false);
+    setInitialTurn(initialGameTurn);
 
     const userPlaysAs = effectiveOrientation.charAt(0);
 
@@ -172,13 +189,25 @@ export default function Home() {
 
     if (moveResult) {
       setCurrentFen(chessInstance.fen());
-      const moveNumber = Math.floor(currentMoveIndex / 2) + 1;
-      const playerTag = t('playerTagApp');
-      const turnIndicator = moveResult.color === 'w' ? '.' : '...';
-      const historyText = (moveResult.color === 'w' || moveHistory.length === 0)
-        ? `${moveNumber}${turnIndicator} ${playerTag} ${moveResult.san}`
-        : `${playerTag} ${moveResult.san}`;
-      setMoveHistory(prev => [...prev, historyText]);
+      const { rowNumber, column } = getMoveDisplayPosition(currentMoveIndex, initialTurn);
+      
+      // Build move pairs for table display
+      setMoveHistory(prev => {
+        const newHistory = [...prev];
+        let pair = newHistory.find(p => p.moveNumber === rowNumber);
+        if (!pair) {
+          pair = { moveNumber: rowNumber, whiteMove: null, blackMove: null };
+          newHistory.push(pair);
+        }
+        
+        if (column === 'white') {
+          pair.whiteMove = moveResult.san;
+        } else {
+          pair.blackMove = moveResult.san;
+        }
+        
+        return newHistory;
+      });
 
       const newMoveIndex = currentMoveIndex + 1;
       setCurrentMoveIndex(newMoveIndex);
@@ -268,13 +297,25 @@ export default function Home() {
       toast({ title: t('toastCorrectMoveTitle'), description: t('toastCorrectMoveDescription', { san: moveResult.san }), action: <CheckCircle className="text-green-500" /> });
       setCurrentFen(chessInstance.fen());
 
-      const moveNumber = Math.floor(currentMoveIndex / 2) + 1;
-      const playerTag = t('playerTagUser');
-      const turnIndicator = moveResult.color === 'w' ? '.' : '...';
-      const historyText = (moveResult.color === 'w' || moveHistory.length === 0)
-        ? `${moveNumber}${turnIndicator} ${playerTag} ${moveResult.san}`
-        : `${playerTag} ${moveResult.san}`;
-      setMoveHistory(prev => [...prev, historyText]);
+      const { rowNumber, column } = getMoveDisplayPosition(currentMoveIndex, initialTurn);
+      
+      // Build move pairs for table display
+      setMoveHistory(prev => {
+        const newHistory = [...prev];
+        let pair = newHistory.find(p => p.moveNumber === rowNumber);
+        if (!pair) {
+          pair = { moveNumber: rowNumber, whiteMove: null, blackMove: null };
+          newHistory.push(pair);
+        }
+        
+        if (column === 'white') {
+          pair.whiteMove = moveResult.san;
+        } else {
+          pair.blackMove = moveResult.san;
+        }
+        
+        return newHistory;
+      });
 
       const newMoveIndex = currentMoveIndex + 1;
       setCurrentMoveIndex(newMoveIndex);
@@ -320,6 +361,7 @@ export default function Home() {
       setMoveHistory([]);
       setHintSquare(null);
       setIsLoading(false);
+      setInitialTurn(initialGameTurn);
       toast({ title: t('toastPuzzleResetTitle'), description: t('toastPuzzleResetDescription') });
 
       const userPlaysAs = effectiveOrientation.charAt(0);
@@ -481,13 +523,24 @@ export default function Home() {
                 {moveHistory.length === 0 ? (
                   <p className="text-muted-foreground italic">{t('moveHistoryEmpty')}</p>
                 ) : (
-                  <ol className="list-none list-inside space-y-1">
-                    {moveHistory.map((move, index) => (
-                      <li key={index} className="text-sm">
-                        {move}
-                      </li>
-                    ))}
-                  </ol>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px] text-center">#</TableHead>
+                        <TableHead>{t('whiteMoves')}</TableHead>
+                        <TableHead>{t('blackMoves')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {moveHistory.map((pair) => (
+                        <TableRow key={pair.moveNumber}>
+                          <TableCell className="font-medium text-center">{pair.moveNumber}</TableCell>
+                          <TableCell>{pair.whiteMove || '-'}</TableCell>
+                          <TableCell>{pair.blackMove || (pair.whiteMove ? '' : '-')}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
               </ScrollArea>
             </CardContent>

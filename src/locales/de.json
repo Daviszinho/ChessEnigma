@@ -14,6 +14,8 @@
   "statusAppThinking": "App denkt nach...",
   "moveHistoryTitle": "Zugverlauf",
   "moveHistoryEmpty": "Noch keine Züge.",
+  "whiteMoves": "Weiß",
+  "blackMoves": "Schwarz",
   "playerTagApp": "(App)",
   "playerTagUser": "(Du)",
   "footerCopyright": "© {year} ChessEnigma. Alle Rechte vorbehalten.",

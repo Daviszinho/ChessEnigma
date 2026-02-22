@@ -14,6 +14,8 @@
   "statusAppThinking": "La App está pensando...",
   "moveHistoryTitle": "Historial de Movimientos",
   "moveHistoryEmpty": "Aún no hay movimientos.",
+  "whiteMoves": "Blancas",
+  "blackMoves": "Negras",
   "playerTagApp": "(App)",
   "playerTagUser": "(Tú)",
   "footerCopyright": "© {year} ChessEnigma. Todos los derechos reservados.",
