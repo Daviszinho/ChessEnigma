@@ -73,7 +73,7 @@ src/
 2. **Tu Turno**: Mueve las piezas cuando sea tu turno (indicado en el estado)
 3. **Pistas**: Usa "Show Hint" para obtener una pista sobre el siguiente movimiento
 4. **Reiniciar**: "Reset Puzzle" para empezar el puzzle actual desde el principio
-5. **Instalar App**: Instala la aplicación como PWA para mejor experiencia
+5. **Instalar App**: Instala la aplicación como PWA para mejor experiencia.
 
 ## 🔧 Configuración de Oracle
 
