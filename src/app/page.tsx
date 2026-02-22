@@ -74,8 +74,52 @@ export default function Home() {
   const [currentYear, setCurrentYear] = useState<number | null>(null);
   const [initialTurn, setInitialTurn] = useState<'w' | 'b'>('w');
   const audioContextRef = useRef<any>(null);
+  const pendingMoveSoundRef = useRef(false);
 
   const { toast } = useToast();
+
+  const emitBoardClickSound = useCallback((ctx: any) => {
+    const now = ctx.currentTime;
+    // Low transient to simulate piece impact.
+    const impactOsc = ctx.createOscillator();
+    const impactGain = ctx.createGain();
+    impactOsc.type = 'triangle';
+    impactOsc.frequency.setValueAtTime(260, now);
+    impactOsc.frequency.exponentialRampToValueAtTime(140, now + 0.035);
+    impactGain.gain.setValueAtTime(0.0001, now);
+    impactGain.gain.exponentialRampToValueAtTime(0.12, now + 0.003);
+    impactGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+    impactOsc.connect(impactGain);
+    impactGain.connect(ctx.destination);
+    impactOsc.start(now);
+    impactOsc.stop(now + 0.05);
+
+    // Short filtered noise for the "wood clack" texture.
+    const noiseDuration = 0.035;
+    const noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * noiseDuration), ctx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i += 1) {
+      noiseData[i] = (Math.random() * 2 - 1) * (1 - i / noiseData.length);
+    }
+
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(1500, now);
+    bandpass.Q.setValueAtTime(1.0, now);
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.0001, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.09, now + 0.002);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseDuration);
+
+    noiseSource.connect(bandpass);
+    bandpass.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noiseSource.start(now);
+    noiseSource.stop(now + noiseDuration);
+  }, []);
 
   const playMoveSound = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -87,51 +131,25 @@ export default function Home() {
     }
 
     const ctx = audioContextRef.current;
+    if (ctx.state === 'running') {
+      emitBoardClickSound(ctx);
+      pendingMoveSoundRef.current = false;
+      return;
+    }
+
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
+      pendingMoveSoundRef.current = true;
+      ctx.resume().then(() => {
+        emitBoardClickSound(ctx);
+        pendingMoveSoundRef.current = false;
+      }).catch(() => {
+        pendingMoveSoundRef.current = true;
+      });
+      return;
     }
 
-    const now = ctx.currentTime;
-    // Low transient to simulate piece impact.
-    const impactOsc = ctx.createOscillator();
-    const impactGain = ctx.createGain();
-    impactOsc.type = 'triangle';
-    impactOsc.frequency.setValueAtTime(260, now);
-    impactOsc.frequency.exponentialRampToValueAtTime(120, now + 0.05);
-    impactGain.gain.setValueAtTime(0.0001, now);
-    impactGain.gain.exponentialRampToValueAtTime(0.16, now + 0.005);
-    impactGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
-    impactOsc.connect(impactGain);
-    impactGain.connect(ctx.destination);
-    impactOsc.start(now);
-    impactOsc.stop(now + 0.08);
-
-    // Short filtered noise for the "wood clack" texture.
-    const noiseDuration = 0.055;
-    const noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * noiseDuration), ctx.sampleRate);
-    const noiseData = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < noiseData.length; i += 1) {
-      noiseData[i] = (Math.random() * 2 - 1) * (1 - i / noiseData.length);
-    }
-
-    const noiseSource = ctx.createBufferSource();
-    noiseSource.buffer = noiseBuffer;
-    const bandpass = ctx.createBiquadFilter();
-    bandpass.type = 'bandpass';
-    bandpass.frequency.setValueAtTime(1600, now);
-    bandpass.Q.setValueAtTime(1.2, now);
-
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.0001, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.13, now + 0.003);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseDuration);
-
-    noiseSource.connect(bandpass);
-    bandpass.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noiseSource.start(now);
-    noiseSource.stop(now + noiseDuration);
-  }, []);
+    pendingMoveSoundRef.current = true;
+  }, [emitBoardClickSound]);
 
   useEffect(() => {
     if (t && t('pageTitle')) { // Check if t and specific key exists
@@ -231,12 +249,42 @@ export default function Home() {
   }, [fetchNewPuzzle]);
 
   useEffect(() => {
+    const unlockAudio = () => {
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContextClass();
+      }
+
+      const hadPendingMoveSound = pendingMoveSoundRef.current;
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      if (hadPendingMoveSound) {
+        playMoveSound();
+      }
+
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
+
     return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
       if (audioContextRef.current) {
         audioContextRef.current.close().catch(() => {});
       }
     };
-  }, []);
+  }, [playMoveSound]);
 
   const makeAppMove = useCallback(() => {
     if (!chessInstance || !solutionMoves.length || currentMoveIndex >= solutionMoves.length || isUserTurn || isPuzzleSolved || !puzzle) {
