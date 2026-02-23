@@ -3,23 +3,36 @@
   packages = [
     pkgs.nodejs_20
   ];
-  idx.extensions = [
-    
-  ];
-  idx.previews = {
-    previews = {
-      web = {
-        command = [
-          "npm"
-          "run"
-          "dev"
-          "--"
-          "--port"
-          "$PORT"
-          "--hostname"
-          "0.0.0.0"
+  services.firebase.emulators = {
+    detect = true;
+    projectId = "demo-app";
+    services = ["auth" "firestore"];
+  };
+  idx = {
+    extensions = [];
+    workspace = {
+      onCreate = {
+        default.openFiles = [
+          "src/app/page.tsx"
+          "firebase.json"
         ];
-        manager = "web";
+      };
+    };
+    previews = {
+      previews = {
+        web = {
+          command = [
+            "npm"
+            "run"
+            "dev"
+            "--"
+            "--port"
+            "$PORT"
+            "--hostname"
+            "0.0.0.0"
+          ];
+          manager = "web";
+        };
       };
     };
   };
