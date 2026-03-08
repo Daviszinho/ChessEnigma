@@ -38,17 +38,12 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
-      - name: Zip artifact for deployment
+      - name: Prepare artifact for deployment
         run: |
-          zip -r node-app.zip . \
-            -x "node_modules/*" \
-            -x ".git/*" \
-            -x ".github/*" \
-            -x ".next/*" \
-            -x "out/*" \
-            -x "coverage/*" \
-            -x "*.log" \
-            -x "*.md"
+          cp -r public .next/standalone/
+          cp -r .next/static .next/standalone/.next/
+          cd .next/standalone
+          zip -r ../../node-app.zip .
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
