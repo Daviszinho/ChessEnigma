@@ -388,7 +388,12 @@ export default function Home() {
     const attemptedMoveUci = `${sourceSquare}${targetSquare}`;
     let promotionChar = '';
     if ((piece === 'wP' && targetSquare.endsWith('8')) || (piece === 'bP' && targetSquare.endsWith('1'))) {
-      promotionChar = 'q';
+      const expectedMove = solutionMoves[currentMoveIndex];
+      if (expectedMove.length === 5) {
+        promotionChar = expectedMove.charAt(4);
+      } else {
+        promotionChar = 'q';
+      }
     }
 
     const expectedMoveUciWithOptionalPromotion = solutionMoves[currentMoveIndex];

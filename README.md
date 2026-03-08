@@ -124,4 +124,4 @@ Este proyecto está bajo la Licencia MIT - mira el archivo [LICENSE](LICENSE) pa
 - **chess.js**: Librería fundamental para la lógica de ajedrez
 - **react-chessboard**: Componente de tablero de ajedrez interactivo
 - **Oracle**: Base de datos robusta para almacenamiento de puzzles
-- **Google AI**: Generación de puzzles con inteligencia artificial
+- **Google AI**: Generación de puzzles con inteligencia artificialn dev
