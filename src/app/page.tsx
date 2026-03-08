@@ -165,7 +165,6 @@ export default function Home() {
   const initializeNewPuzzle = useCallback((newPuzzle: Puzzle) => {
     console.log("--- Initializing New Puzzle ---");
     console.log("Puzzle ID:", newPuzzle.id);
-    console.log("Received Puzzle Data from source:", JSON.stringify(newPuzzle));
 
     const chess = new Chess(newPuzzle.fen);
     const initialGameTurn = chess.turn();
@@ -187,23 +186,12 @@ export default function Home() {
     setInitialTurn(initialGameTurn);
 
     const userPlaysAs = effectiveOrientation.charAt(0);
-
-    console.log("FEN indicates turn for:", initialGameTurn === 'w' ? 'White' : 'Black');
-    console.log("Data source orientation:", newPuzzle.orientation);
-    console.log("Solution length:", numSolutionMoves);
-    console.log("Calculated effective user orientation:", effectiveOrientation);
-    console.log("User effectively plays as:", userPlaysAs === 'w' ? 'White' : 'Black');
-
-    let newIsUserTurn;
-    if (initialGameTurn === userPlaysAs) {
-      newIsUserTurn = true;
-    } else {
-      newIsUserTurn = false;
-    }
+    const newIsUserTurn = initialGameTurn === userPlaysAs;
     setIsUserTurn(newIsUserTurn);
-    console.log("Initial isUserTurn set to:", newIsUserTurn);
-    console.log("--- End Puzzle Initialization Log ---");
 
+    console.log(`User effectively plays as: ${userPlaysAs === 'w' ? 'White' : 'Black'}`);
+    console.log(`Initial isUserTurn set to: ${newIsUserTurn}`);
+    console.log("--- End Puzzle Initialization Log ---");
   }, []);
 
   const fetchNewPuzzle = useCallback(async () => {
@@ -214,69 +202,56 @@ export default function Home() {
       initializeNewPuzzle(newPuzzleData);
     } catch (error) {
       setIsLoading(false);
-
       let toastTitle = t('toastErrorFetchingPuzzleTitle') || "Error Fetching Puzzle";
       let toastDescription = t('toastErrorFetchingPuzzleDescription') || "An unexpected error occurred.";
 
-      if (error instanceof Error && error.message) {
-        const lowerCaseErrorMessage = error.message.toLowerCase();
-        if (lowerCaseErrorMessage.includes("typeerror: failed to fetch") || lowerCaseErrorMessage.includes("failed to fetch")) {
+      if (error instanceof Error && error.message.toLowerCase().includes("failed to fetch")) {
           toastDescription = t('toastErrorNetwork') || "Network error. Please check your connection.";
-        } else {
-          toastDescription = error.message;
-        }
       }
 
-      try {
-        toast({
-          title: toastTitle,
-          description: toastDescription,
-          variant: "destructive",
-        });
-      } catch (toastError) {
-        console.error("Error displaying toast notification:", toastError);
-        alert("Failed to fetch puzzle. An additional error occurred while trying to display the error message.");
-      }
+      toast({
+        title: toastTitle,
+        description: toastDescription,
+        variant: "destructive",
+      });
     }
   }, [initializeNewPuzzle, toast, t]);
+
+  const handleResetPuzzle = useCallback(() => {
+    if (puzzle) {
+      console.log("--- Puzzle Reset ---");
+      initializeNewPuzzle(puzzle);
+      toast({ title: t('toastPuzzleResetTitle'), description: t('toastPuzzleResetDescription') });
+    }
+  }, [puzzle, initializeNewPuzzle, toast, t]);
 
   const hasFetchedInitial = useRef(false);
 
   useEffect(() => {
     if (!hasFetchedInitial.current) {
-      fetchNewPuzzle();
       hasFetchedInitial.current = true;
+      fetchNewPuzzle();
     }
   }, [fetchNewPuzzle]);
 
   useEffect(() => {
     const unlockAudio = () => {
       const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-
+      if (!AudioContextClass || !audioContextRef) return;
       if (!audioContextRef.current) {
         audioContextRef.current = new AudioContextClass();
       }
-
-      const hadPendingMoveSound = pendingMoveSoundRef.current;
       const ctx = audioContextRef.current;
       if (ctx.state === 'suspended') {
         ctx.resume().catch(() => {});
       }
-
-      if (hadPendingMoveSound) {
-        playMoveSound();
-      }
-
       window.removeEventListener('pointerdown', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
     };
-
     window.addEventListener('pointerdown', unlockAudio, { passive: true });
-    window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('keydown', unlockAudio, { passive: true });
     window.addEventListener('touchstart', unlockAudio, { passive: true });
-
     return () => {
       window.removeEventListener('pointerdown', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);
@@ -285,28 +260,26 @@ export default function Home() {
         audioContextRef.current.close().catch(() => {});
       }
     };
-  }, [playMoveSound]);
+  }, []);
 
   const makeAppMove = useCallback(() => {
-    if (!chessInstance || !solutionMoves.length || currentMoveIndex >= solutionMoves.length || isUserTurn || isPuzzleSolved || !puzzle) {
+    if (!chessInstance || isUserTurn || isPuzzleSolved || !puzzle || currentMoveIndex >= solutionMoves.length) {
       return;
     }
+
     setHintSquare(null);
-
     const moveNotation = solutionMoves[currentMoveIndex];
-    let moveResult;
-    try {
-      moveResult = chessInstance.move(moveNotation, { sloppy: true });
-    } catch (e) {
-      moveResult = null;
-    }
+    const game = new Chess(chessInstance.fen());
 
-    if (moveResult) {
-      setCurrentFen(chessInstance.fen());
+    try {
+      const moveResult = game.move(moveNotation, { sloppy: true });
+      if (!moveResult) throw new Error("Invalid move in solution");
+
+      setChessInstance(game);
+      setCurrentFen(game.fen());
       playMoveSound();
+
       const { rowNumber, column } = getMoveDisplayPosition(currentMoveIndex, initialTurn);
-      
-      // Build move pairs for table display
       setMoveHistory(prev => {
         const newHistory = [...prev];
         let pair = newHistory.find(p => p.moveNumber === rowNumber);
@@ -314,14 +287,9 @@ export default function Home() {
           pair = { moveNumber: rowNumber, whiteMove: null, blackMove: null };
           newHistory.push(pair);
         }
-        
-        if (column === 'white') {
-          pair.whiteMove = moveResult.san;
-        } else {
-          pair.blackMove = moveResult.san;
-        }
-        
-        return newHistory;
+        if (column === 'white') pair.whiteMove = moveResult.san;
+        else pair.blackMove = moveResult.san;
+        return newHistory.sort((a, b) => a.moveNumber - b.moveNumber);
       });
 
       const newMoveIndex = currentMoveIndex + 1;
@@ -329,198 +297,87 @@ export default function Home() {
 
       if (newMoveIndex >= solutionMoves.length) {
         setIsPuzzleSolved(true);
-        toast({
-          title: t('toastPuzzleSolvedTitle'),
-          description: t('toastPuzzleSolvedDescription'),
-          action: <CheckCircle className="text-green-500" />,
-        });
+        toast({ title: t('toastPuzzleSolvedTitle'), description: t('toastPuzzleSolvedDescription'), action: <CheckCircle className="text-green-500" /> });
       } else {
         setIsUserTurn(true);
       }
-    } else {
-      console.error("Invalid app move in solution:", moveNotation, "FEN:", chessInstance.fen(), "Current turn by FEN:", chessInstance.turn());
-      toast({
-        title: t('toastPuzzleErrorTitle'),
-        description: t('toastPuzzleErrorDescription'),
-        variant: "destructive"
-      });
-      setIsUserTurn(true);
-      setIsLoading(false);
+    } catch (e) {
+      console.error("Critical Error: Invalid app move in solution.", { move: moveNotation, fen: chessInstance.fen(), error: e.message });
+      toast({ title: t('toastPuzzleErrorTitle'), description: t('toastPuzzleErrorDescription'), variant: "destructive" });
+      handleResetPuzzle();
     }
-  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, toast, puzzle, moveHistory, t, initialTurn, playMoveSound]);
+  }, [chessInstance, solutionMoves, currentMoveIndex, isUserTurn, isPuzzleSolved, puzzle, initialTurn, playMoveSound, t, toast, handleResetPuzzle]);
 
   useEffect(() => {
-    if (puzzle && chessInstance && !isLoading && !isPuzzleSolved && !isUserTurn && currentMoveIndex < solutionMoves.length) {
-      const timer = setTimeout(() => {
-        makeAppMove();
-      }, 500);
+    if (!isUserTurn && !isLoading && !isPuzzleSolved) {
+      const timer = setTimeout(makeAppMove, 500);
       return () => clearTimeout(timer);
     }
-  }, [puzzle, chessInstance, isLoading, isPuzzleSolved, isUserTurn, currentMoveIndex, solutionMoves, makeAppMove]);
+  }, [isUserTurn, isLoading, isPuzzleSolved, makeAppMove]);
 
-  const handleUserMove = (sourceSquare: Square, targetSquare: Square, piece: Piece): boolean => {
-    setHintSquare(null);
-    if (!chessInstance || !isUserTurn || isPuzzleSolved || currentMoveIndex >= solutionMoves.length || !puzzle) {
+  const handleUserMove = useCallback((sourceSquare: Square, targetSquare: Square, piece: Piece): boolean => {
+    if (!chessInstance || !isUserTurn || isPuzzleSolved || !puzzle || currentMoveIndex >= solutionMoves.length) {
       return false;
     }
 
-    const userPlaysAsColor = boardOrientation.charAt(0);
-    if (piece.charAt(0).toLowerCase() !== userPlaysAsColor) {
-      toast({
-        title: t('toastNotYourPieceTitle'),
-        description: t('toastNotYourPieceDescription', { orientation: t(boardOrientation === 'white' ? 'orientationWhite' : 'orientationBlack') }),
-        variant: "destructive"
-      });
+    const game = new Chess(chessInstance.fen());
+    const pieceOnSource = game.get(sourceSquare);
+
+    if (!pieceOnSource) {
+      toast({ title: 'Error', description: 'An internal error occurred. Please reset the puzzle.', variant: "destructive" });
       return false;
     }
 
-    if (chessInstance.turn() !== userPlaysAsColor) {
-      toast({
-        title: t('toastNotYourTurnTitle'),
-        description: t('toastNotYourTurnDescription', {
-          turn: t(chessInstance.turn() === 'w' ? 'orientationWhite' : 'orientationBlack'),
-          orientation: t(boardOrientation === 'white' ? 'orientationWhite' : 'orientationBlack')
-        }),
-        variant: "destructive"
-      });
-      return false;
-    }
+    const expectedMove = solutionMoves[currentMoveIndex];
+    const isPromotion = (pieceOnSource.type === 'p' && ((pieceOnSource.color === 'w' && sourceSquare[1] === '7' && targetSquare[1] === '8') || (pieceOnSource.color === 'b' && sourceSquare[1] === '2' && targetSquare[1] === '1')));
+    const promotionChar = isPromotion ? (expectedMove.length === 5 ? expectedMove[4] : 'q') : undefined;
 
-    const attemptedMoveUci = `${sourceSquare}${targetSquare}`;
-    let promotionChar = '';
-    if ((piece === 'wP' && targetSquare.endsWith('8')) || (piece === 'bP' && targetSquare.endsWith('1'))) {
-      const expectedMove = solutionMoves[currentMoveIndex];
-      if (expectedMove.length === 5) {
-        promotionChar = expectedMove.charAt(4);
-      } else {
-        promotionChar = 'q';
-      }
-    }
-
-    const expectedMoveUciWithOptionalPromotion = solutionMoves[currentMoveIndex];
-    let moveResult;
     try {
-      moveResult = chessInstance.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar || undefined });
-    } catch (e) {
-      moveResult = null;
-    }
+      const moveResult = game.move({ from: sourceSquare, to: targetSquare, promotion: promotionChar });
+      const madeMoveUci = moveResult.from + moveResult.to + (moveResult.promotion || '');
 
-    if (!moveResult) {
-      toast({ title: t('toastIllegalMoveTitle'), description: t('toastIllegalMoveDescription'), variant: "destructive", action: <XCircle className="text-red-500" /> });
-      setCurrentFen(chessInstance.fen());
-      return false;
-    }
+      if (madeMoveUci.toLowerCase() === expectedMove.toLowerCase()) {
+        setChessInstance(game);
+        setCurrentFen(game.fen());
+        playMoveSound();
+        toast({ title: t('toastCorrectMoveTitle'), description: t('toastCorrectMoveDescription', { san: moveResult.san }), action: <CheckCircle className="text-green-500" /> });
 
-    const madeMoveUci = moveResult.from + moveResult.to + (moveResult.promotion || '');
-
-    if (madeMoveUci.toLowerCase() === expectedMoveUciWithOptionalPromotion.toLowerCase()) {
-      toast({ title: t('toastCorrectMoveTitle'), description: t('toastCorrectMoveDescription', { san: moveResult.san }), action: <CheckCircle className="text-green-500" /> });
-      setCurrentFen(chessInstance.fen());
-      playMoveSound();
-
-      const { rowNumber, column } = getMoveDisplayPosition(currentMoveIndex, initialTurn);
-      
-      // Build move pairs for table display
-      setMoveHistory(prev => {
-        const newHistory = [...prev];
-        let pair = newHistory.find(p => p.moveNumber === rowNumber);
-        if (!pair) {
-          pair = { moveNumber: rowNumber, whiteMove: null, blackMove: null };
-          newHistory.push(pair);
-        }
-        
-        if (column === 'white') {
-          pair.whiteMove = moveResult.san;
-        } else {
-          pair.blackMove = moveResult.san;
-        }
-        
-        return newHistory;
-      });
-
-      const newMoveIndex = currentMoveIndex + 1;
-      setCurrentMoveIndex(newMoveIndex);
-
-      if (newMoveIndex >= solutionMoves.length) {
-        setIsPuzzleSolved(true);
-        toast({
-          title: t('toastPuzzleSolvedTitle'),
-          description: t('toastPuzzleSolvedDescription'),
-          action: <CheckCircle className="text-green-500" />,
+        const { rowNumber, column } = getMoveDisplayPosition(currentMoveIndex, initialTurn);
+        setMoveHistory(prev => {
+          const newHistory = [...prev];
+          let pair = newHistory.find(p => p.moveNumber === rowNumber);
+          if (!pair) {
+            pair = { moveNumber: rowNumber, whiteMove: null, blackMove: null };
+            newHistory.push(pair);
+          }
+          if (column === 'white') pair.whiteMove = moveResult.san;
+          else pair.blackMove = moveResult.san;
+          return newHistory.sort((a, b) => a.moveNumber - b.moveNumber);
         });
+
+        const newMoveIndex = currentMoveIndex + 1;
+        setCurrentMoveIndex(newMoveIndex);
+
+        if (newMoveIndex >= solutionMoves.length) {
+          setIsPuzzleSolved(true);
+          toast({ title: t('toastPuzzleSolvedTitle'), description: t('toastPuzzleSolvedDescription'), action: <CheckCircle className="text-green-500" /> });
+        } else {
+          setIsUserTurn(false);
+        }
+        return true;
       } else {
-        setIsUserTurn(false);
+        toast({ title: t('toastIncorrectMoveTitle'), description: t('toastIncorrectMoveDescription'), variant: "destructive", action: <XCircle className="text-red-500" /> });
+        return false;
       }
-      return true;
-    } else {
-      toast({
-        title: t('toastIncorrectMoveTitle'),
-        description: t('toastIncorrectMoveDescription'),
-        variant: "destructive",
-        action: <XCircle className="text-red-500" />
-      });
-      chessInstance.undo();
-      setCurrentFen(chessInstance.fen());
+    } catch (e) {
+      toast({ title: t('toastIllegalMoveTitle'), description: t('toastIllegalMoveDescription'), variant: "destructive", action: <XCircle className="text-red-500" /> });
       return false;
     }
-  };
-
-  const handleResetPuzzle = () => {
-    if (puzzle) {
-      const chess = new Chess(puzzle.fen);
-      const initialGameTurn = chess.turn();
-      const parsedSolutionMoves = puzzle.solution.trim() ? puzzle.solution.split(' ') : [];
-      const numSolutionMoves = parsedSolutionMoves.length;
-      const effectiveOrientation = getEffectiveOrientation(initialGameTurn, numSolutionMoves, puzzle.orientation);
-
-      setCurrentFen(chess.fen());
-      setBoardOrientation(effectiveOrientation);
-      setChessInstance(chess);
-      setSolutionMoves(parsedSolutionMoves);
-      setCurrentMoveIndex(0);
-      setIsPuzzleSolved(false);
-      setMoveHistory([]);
-      setHintSquare(null);
-      setIsLoading(false);
-      setInitialTurn(initialGameTurn);
-      toast({ title: t('toastPuzzleResetTitle'), description: t('toastPuzzleResetDescription') });
-
-      const userPlaysAs = effectiveOrientation.charAt(0);
-      let newIsUserTurn;
-      if (initialGameTurn === userPlaysAs) {
-        newIsUserTurn = true;
-      } else {
-        newIsUserTurn = false;
-      }
-      setIsUserTurn(newIsUserTurn);
-
-      console.log("--- Puzzle Reset ---");
-      console.log("Original Puzzle Data:", JSON.stringify(puzzle));
-      console.log("FEN indicates turn for:", initialGameTurn === 'w' ? 'White' : 'Black');
-      console.log("Data source orientation:", puzzle.orientation);
-      console.log("Solution length:", numSolutionMoves);
-      console.log("Calculated effective user orientation:", effectiveOrientation);
-      console.log("User effectively plays as:", userPlaysAs === 'w' ? 'White' : 'Black');
-      console.log("isUserTurn set to:", newIsUserTurn);
-      console.log("--- End Reset Log ---");
-    }
-  };
+  }, [chessInstance, isUserTurn, isPuzzleSolved, puzzle, solutionMoves, currentMoveIndex, initialTurn, playMoveSound, t, toast]);
 
   const handleShowHint = () => {
-    if (!puzzle || !chessInstance || !isUserTurn || isPuzzleSolved) {
-      toast({ title: t('toastHintUnavailableTitle'), description: t('toastHintUnavailableDescription'), variant: "default" });
-      return;
-    }
-    if (currentMoveIndex >= solutionMoves.length || !solutionMoves[currentMoveIndex]) {
-      toast({ title: t('toastHintErrorTitle'), description: t('toastHintErrorNoMoreMoves'), variant: "destructive" });
-      return;
-    }
-
+    if (!isUserTurn || isPuzzleSolved || currentMoveIndex >= solutionMoves.length) return;
     const nextMoveUci = solutionMoves[currentMoveIndex];
-    if (nextMoveUci.length < 2) {
-      toast({ title: t('toastHintErrorTitle'), description: t('toastHintErrorInvalidFormat'), variant: "destructive" });
-      return;
-    }
     const sourceSq = nextMoveUci.substring(0, 2) as Square;
     setHintSquare(sourceSq);
     toast({ title: t('toastHintActivatedTitle'), description: t('toastHintActivatedDescription', { square: sourceSq }), duration: 3000 });
@@ -535,14 +392,6 @@ export default function Home() {
         action: <CheckCircle className="text-green-500" />,
       });
     }
-  };
-
-  const boardWrapperStyle: CSSProperties = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    padding: '1rem 0',
   };
 
   return (
