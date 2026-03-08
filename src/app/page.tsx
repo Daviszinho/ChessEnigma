@@ -164,6 +164,7 @@ export default function Home() {
 
   const initializeNewPuzzle = useCallback((newPuzzle: Puzzle) => {
     console.log("--- Initializing New Puzzle ---");
+    console.log("Puzzle ID:", newPuzzle.id);
     console.log("Received Puzzle Data from source:", JSON.stringify(newPuzzle));
 
     const chess = new Chess(newPuzzle.fen);
