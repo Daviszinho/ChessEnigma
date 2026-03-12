@@ -12,7 +12,12 @@ export const metadata: Metadata = {
     icon: '/icon.svg',
     apple: '/icon.svg',
   },
+};
+
+export const viewport = {
   themeColor: '#09090b',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
