@@ -8,7 +8,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Chess } from 'chess.js';
 import type { Piece, Square } from 'react-chessboard/dist/chessboard/types';
 
-import ChessboardClient from '@/components/ChessboardClient';
+import dynamic from 'next/dynamic';
+const ChessboardClient = dynamic(() => import('@/components/ChessboardClient'), {
+  ssr: false,
+});
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
